@@ -32,8 +32,21 @@ class OSSService:
                 self.client.make_bucket(self.bucket)
                 logger.info(f"创建bucket: {self.bucket}")
         except S3Error as e:
-            logger.error(f"检查或创建bucket失败: {e}")
-            raise
+            # 如果是权限错误，尝试直接创建bucket（可能没有检查权限但有创建权限）
+            if e.code == "AccessDenied":
+                try:
+                    self.client.make_bucket(self.bucket)
+                    logger.info(f"创建bucket: {self.bucket}")
+                except S3Error as create_error:
+                    # 如果创建也失败，可能是bucket已存在但没有访问权限，记录警告但不阻止初始化
+                    # 实际使用时可能仍然可以上传文件
+                    if create_error.code == "BucketAlreadyOwnedByYou" or create_error.code == "BucketAlreadyExists":
+                        logger.warning(f"Bucket {self.bucket} 已存在但无法检查，可能在后续使用中正常工作")
+                    else:
+                        logger.warning(f"无法创建或检查bucket {self.bucket}: {create_error}。如果bucket已存在，服务可能仍可正常工作")
+            else:
+                # 其他错误，记录但不阻止初始化（可能是网络问题等临时性错误）
+                logger.warning(f"检查bucket失败: {e}。服务将继续运行，但可能在上传时遇到问题")
     
     def _generate_filename(self, output_format: str = "png") -> str:
         """生成唯一文件名"""

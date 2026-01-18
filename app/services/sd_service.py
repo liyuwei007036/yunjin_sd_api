@@ -1,11 +1,12 @@
 """
-SD模型生成服务（支持LoRA）
+SD模型生成服务（支持LoRA和LoHA）
 """
 import torch
 from pathlib import Path
 from typing import List, Optional, Dict, Any, Union
 from PIL import Image
 import numpy as np
+from safetensors import safe_open
 from diffusers import (
     StableDiffusionPipeline,
     StableDiffusionImg2ImgPipeline,
@@ -93,15 +94,59 @@ class SDService:
                             # 文件路径，需要分离目录和文件名
                             lora_dir = str(lora_path_obj.parent.resolve())
                             weight_name = lora_path_obj.name
-                            self.text2img_pipeline.load_lora_weights(lora_dir, weight_name=weight_name, weight=lora_weight)
-                            self.img2img_pipeline.load_lora_weights(lora_dir, weight_name=weight_name, weight=lora_weight)
+                            
+                            # 先尝试标准LoRA加载
+                            try:
+                                self.text2img_pipeline.load_lora_weights(lora_dir, weight_name=weight_name, weight=lora_weight)
+                                self.img2img_pipeline.load_lora_weights(lora_dir, weight_name=weight_name, weight=lora_weight)
+                                logger.info(f"LoRA加载成功: {lora_path}")
+                            except (ValueError, Exception) as e:
+                                error_msg = str(e)
+                                # 检查是否是LoHA格式错误
+                                if "have not been correctly renamed" in error_msg or "hada_w" in error_msg:
+                                    logger.warning(f"检测到LoHA格式，尝试使用手动加载方式: {lora_path}")
+                                    try:
+                                        self._load_loha_weights(lora_path, lora_weight)
+                                        logger.info(f"LoHA权重手动加载成功: {lora_path}")
+                                    except Exception as loha_error:
+                                        logger.error(f"LoHA手动加载也失败: {lora_path}, 错误: {str(loha_error)}")
+                                        logger.warning(f"跳过此LoRA模型: {lora_path}")
+                                else:
+                                    raise
                         else:
                             # 目录路径，直接使用
-                            self.text2img_pipeline.load_lora_weights(lora_path, weight=lora_weight)
-                            self.img2img_pipeline.load_lora_weights(lora_path, weight=lora_weight)
+                            try:
+                                self.text2img_pipeline.load_lora_weights(lora_path, weight=lora_weight)
+                                self.img2img_pipeline.load_lora_weights(lora_path, weight=lora_weight)
+                                logger.info(f"LoRA加载成功: {lora_path}")
+                            except (ValueError, Exception) as e:
+                                error_msg = str(e)
+                                # 检查是否是LoHA格式错误
+                                if "have not been correctly renamed" in error_msg or "hada_w" in error_msg:
+                                    logger.warning(f"检测到LoHA格式，尝试使用手动加载方式: {lora_path}")
+                                    # 对于目录，尝试加载目录中的第一个safetensors文件
+                                    lora_dir = Path(lora_path)
+                                    safetensors_files = list(lora_dir.glob("*.safetensors"))
+                                    if safetensors_files:
+                                        try:
+                                            self._load_loha_weights(str(safetensors_files[0]), lora_weight)
+                                            logger.info(f"LoHA权重手动加载成功: {lora_path}")
+                                        except Exception as loha_error:
+                                            logger.error(f"LoHA手动加载也失败: {lora_path}, 错误: {str(loha_error)}")
+                                            logger.warning(f"跳过此LoRA模型: {lora_path}")
+                                    else:
+                                        logger.error(f"目录中未找到safetensors文件: {lora_path}")
+                                        logger.warning(f"跳过此LoRA模型: {lora_path}")
+                                else:
+                                    raise
                     except Exception as e:
-                        logger.error(f"LoRA加载失败: {lora_path}, 错误: {str(e)}", exc_info=True)
-                        raise
+                        error_msg = str(e)
+                        # 如果是LoHA相关错误且已经尝试过手动加载，则只记录警告
+                        if "have not been correctly renamed" in error_msg or "hada_w" in error_msg:
+                            logger.warning(f"LoHA模型加载失败，已跳过: {lora_path}")
+                        else:
+                            logger.error(f"LoRA加载失败: {lora_path}, 错误: {str(e)}", exc_info=True)
+                            raise
         
         # 设置默认scheduler
         if self.default_scheduler and self.default_scheduler in SCHEDULER_MAP:
@@ -111,6 +156,199 @@ class SDService:
             self.img2img_pipeline.scheduler = scheduler
         
         logger.info("SD模型加载完成")
+    
+    def _is_loha_format(self, state_dict: Dict[str, torch.Tensor]) -> bool:
+        """检查是否是LoHA格式"""
+        for key in state_dict.keys():
+            if "hada_w1_a" in key or "hada_w2_a" in key or "hada_w1_b" in key or "hada_w2_b" in key:
+                return True
+        return False
+    
+    def _convert_lora_key_to_unet_key(self, lora_key: str) -> Optional[str]:
+        """
+        将LoRA键名转换为UNet键名
+        
+        LoRA键名格式: lora_unet_input_blocks_0_1_transformer_blocks_0_attn1_to_k.hada_w1_a
+        UNet键名格式: down_blocks.0.attentions.1.transformer_blocks.0.attn1.to_k.weight
+        """
+        if not lora_key.startswith("lora_unet_"):
+            return None
+        
+        # 移除lora_unet_前缀和LoHA后缀
+        key = lora_key.replace("lora_unet_", "")
+        for suffix in [".hada_w1_a", ".hada_w1_b", ".hada_w2_a", ".hada_w2_b", ".alpha", ".to_out_0"]:
+            key = key.replace(suffix, "")
+        
+        # 获取UNet的所有键
+        unet_keys = list(self.text2img_pipeline.unet.state_dict().keys())
+        
+        # 构建键名映射规则
+        # input_blocks -> down_blocks
+        # output_blocks -> up_blocks
+        # middle_block -> mid_block
+        
+        # 转换键名模式
+        key_parts = key.split("_")
+        
+        # 特殊处理: input_blocks -> down_blocks
+        if "input_blocks" in key:
+            key = key.replace("input_blocks", "down_blocks")
+        elif "output_blocks" in key:
+            key = key.replace("output_blocks", "up_blocks")
+        
+        # 将下划线转换为点，并添加.weight后缀
+        # 例如: down_blocks_0_attentions_1 -> down_blocks.0.attentions.1.weight
+        converted_key = key.replace("_", ".")
+        
+        # 尝试精确匹配
+        for unet_key in unet_keys:
+            # 移除.weight或.bias后缀进行比较
+            unet_key_base = unet_key.rsplit(".", 1)[0] if "." in unet_key else unet_key
+            converted_key_base = converted_key.rsplit(".", 1)[0] if "." in converted_key else converted_key
+            
+            if unet_key_base == converted_key_base or unet_key_base.endswith(converted_key_base):
+                return unet_key
+        
+        # 如果精确匹配失败，尝试模糊匹配
+        best_match = None
+        best_score = 0
+        
+        converted_parts = converted_key.split(".")
+        for unet_key in unet_keys:
+            if "weight" not in unet_key:
+                continue
+            
+            unet_parts = unet_key.split(".")
+            # 计算匹配的连续部分数量
+            score = 0
+            i = 0
+            j = 0
+            while i < len(converted_parts) and j < len(unet_parts):
+                if converted_parts[i] in unet_parts[j] or unet_parts[j] in converted_parts[i]:
+                    score += 2
+                    i += 1
+                    j += 1
+                elif any(cp in up for cp in converted_parts[i:] for up in unet_parts[j:]):
+                    # 部分匹配
+                    score += 1
+                    i += 1
+                else:
+                    j += 1
+            
+            if score > best_score:
+                best_score = score
+                best_match = unet_key
+        
+        return best_match if best_score >= 3 else None
+    
+    def _load_loha_weights(self, lora_path: str, weight: float = 1.0):
+        """
+        手动加载LoHA格式的权重
+        
+        LoHA (Low-Rank Hadamard Product) 使用 hada_w1_a, hada_w1_b, hada_w2_a, hada_w2_b 等键
+        基于WebUI的network_hada.py实现逻辑
+        """
+        logger.info(f"开始手动加载LoHA权重: {lora_path}, 权重: {weight}")
+        
+        # 加载safetensors文件
+        state_dict = {}
+        with safe_open(lora_path, framework="pt", device="cpu") as f:
+            for key in f.keys():
+                state_dict[key] = f.get_tensor(key)
+        
+        if not self._is_loha_format(state_dict):
+            raise ValueError(f"文件不是LoHA格式: {lora_path}")
+        
+        # 获取UNet
+        unet = self.text2img_pipeline.unet
+        unet_state_dict = unet.state_dict()
+        
+        # 组织LoHA权重数据
+        loha_modules = {}
+        alpha_values = {}
+        
+        for key, tensor in state_dict.items():
+            if ".alpha" in key:
+                base_key = key.replace(".alpha", "")
+                alpha_val = tensor.item() if tensor.numel() == 1 else float(tensor.mean().item())
+                alpha_values[base_key] = alpha_val
+            elif any(suffix in key for suffix in [".hada_w1_a", ".hada_w1_b", ".hada_w2_a", ".hada_w2_b"]):
+                # 提取基础键名
+                base_key = key.rsplit(".", 1)[0]
+                if base_key not in loha_modules:
+                    loha_modules[base_key] = {}
+                loha_modules[base_key][key] = tensor
+        
+        # 应用LoHA权重
+        applied_count = 0
+        for base_key, weights in loha_modules.items():
+            # 获取对应的UNet键
+            unet_key = self._convert_lora_key_to_unet_key(base_key)
+            if unet_key is None or unet_key not in unet_state_dict:
+                continue
+            
+            # 检查是否有完整的LoHA权重
+            w1_a_key = f"{base_key}.hada_w1_a"
+            w1_b_key = f"{base_key}.hada_w1_b"
+            w2_a_key = f"{base_key}.hada_w2_a"
+            w2_b_key = f"{base_key}.hada_w2_b"
+            
+            if not all(k in weights for k in [w1_a_key, w1_b_key, w2_a_key, w2_b_key]):
+                continue
+            
+            w1_a = weights[w1_a_key].to(self.device)
+            w1_b = weights[w1_b_key].to(self.device)
+            w2_a = weights[w2_a_key].to(self.device)
+            w2_b = weights[w2_b_key].to(self.device)
+            
+            # 计算LoHA权重: (w1_a @ w1_b) * (w2_a @ w2_b)
+            # 对于2D矩阵，使用矩阵乘法；对于1D或元素级，使用逐元素乘法
+            if len(w1_a.shape) == 2 and len(w1_b.shape) == 2:
+                w1 = torch.matmul(w1_a, w1_b)
+            else:
+                w1 = w1_a * w1_b
+            
+            if len(w2_a.shape) == 2 and len(w2_b.shape) == 2:
+                w2 = torch.matmul(w2_a, w2_b)
+            else:
+                w2 = w2_a * w2_b
+            
+            # Hadamard积
+            delta_w = w1 * w2
+            
+            # 获取alpha值并计算缩放
+            alpha = alpha_values.get(base_key, 1.0)
+            if alpha <= 0:
+                alpha = 1.0
+            
+            # 计算缩放因子
+            if len(delta_w.shape) > 0:
+                scale = (alpha / delta_w.shape[0]) * weight if delta_w.shape[0] > 0 else weight
+            else:
+                scale = alpha * weight
+            
+            # 应用权重更新
+            original_weight = unet_state_dict[unet_key]
+            if delta_w.shape != original_weight.shape:
+                # 尝试调整形状
+                try:
+                    delta_w = delta_w.view(original_weight.shape)
+                except:
+                    logger.warning(f"形状不匹配，跳过: {base_key} -> {unet_key}")
+                    continue
+            
+            with torch.no_grad():
+                unet_state_dict[unet_key] = original_weight + delta_w.to(original_weight.dtype) * scale
+            
+            applied_count += 1
+        
+        # 加载更新后的权重
+        unet.load_state_dict(unet_state_dict, strict=False)
+        
+        # 同样更新img2img pipeline
+        self.img2img_pipeline.unet.load_state_dict(unet_state_dict, strict=False)
+        
+        logger.info(f"LoHA权重加载完成: {lora_path}, 成功应用 {applied_count} 个模块")
     
     def _get_scheduler(self, scheduler_name: Optional[str] = None):
         """获取scheduler实例"""
