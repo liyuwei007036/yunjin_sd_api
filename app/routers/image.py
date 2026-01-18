@@ -14,6 +14,7 @@ from app.services.llm_service import get_llm_service
 from app.utils.task_manager import task_manager
 from app.auth import require_auth
 from app.utils.logger import logger
+from app.config import Config
 import gc
 
 router = APIRouter(prefix="/api/v1", tags=["image"])
@@ -127,6 +128,17 @@ async def generate_image_task(
         sd_svc = get_sd_service()
         oss_svc = get_oss_service()
         cb_svc = get_callback_service()
+        
+        # 如果用户手动提供了prompt（不是通过LLM转换），自动添加LoRA触发词
+        # 注意：LLM转换的prompt已经在llm_service中添加了触发词
+        lora_trigger_words = Config.get_lora_trigger_words()
+        if lora_trigger_words and prompt:
+            prompt_lower = prompt.lower()
+            has_trigger = any(trigger.lower() in prompt_lower for trigger in lora_trigger_words)
+            if not has_trigger:
+                trigger_str = ", ".join(lora_trigger_words)
+                prompt = f"{trigger_str}, {prompt}"
+                logger.info(f"已自动为手动prompt添加LoRA触发词: {trigger_str}")
         
         # 根据是否有init_image决定生成方式
         if init_image:

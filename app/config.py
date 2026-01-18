@@ -23,6 +23,7 @@ class Config:
     LORA_MODELS: Optional[List[Dict[str, Any]]] = None
     LORA_MODELS_DIR: Optional[str] = None
     LORA_MODELS_LIST: Optional[str] = None
+    LORA_TRIGGER_WORDS: Optional[List[str]] = None  # 全局LoRA触发词（如果单个LoRA未配置）
     
     # 默认采样方法
     DEFAULT_SCHEDULER: Optional[str] = None
@@ -93,6 +94,14 @@ class Config:
         cls.LORA_MODELS = lora_config.get("models")
         cls.LORA_MODELS_DIR = lora_config.get("models_dir")
         cls.LORA_MODELS_LIST = lora_config.get("models_list")
+        # 加载全局触发词（如果配置了）
+        trigger_words = lora_config.get("trigger_words")
+        if isinstance(trigger_words, str):
+            cls.LORA_TRIGGER_WORDS = [w.strip() for w in trigger_words.split(",") if w.strip()]
+        elif isinstance(trigger_words, list):
+            cls.LORA_TRIGGER_WORDS = trigger_words
+        else:
+            cls.LORA_TRIGGER_WORDS = None
         
         # 加载默认采样方法
         cls.DEFAULT_SCHEDULER = cls._config_data.get("default_scheduler")
@@ -172,6 +181,34 @@ class Config:
         # 未配置LoRA模型
         cls.LORA_MODELS = []
         return None
+    
+    @classmethod
+    def get_lora_trigger_words(cls) -> List[str]:
+        """
+        获取所有LoRA的触发词列表
+        
+        Returns:
+            触发词列表（去重后）
+        """
+        trigger_words_set = set()
+        
+        # 从每个LoRA配置中收集触发词
+        if cls.LORA_MODELS:
+            for lora_config in cls.LORA_MODELS:
+                trigger_words = lora_config.get("trigger_words", [])
+                if isinstance(trigger_words, str):
+                    # 如果是字符串，按逗号分割
+                    words = [w.strip() for w in trigger_words.split(",") if w.strip()]
+                    trigger_words_set.update(words)
+                elif isinstance(trigger_words, list):
+                    # 如果是列表，直接添加
+                    trigger_words_set.update([w.strip() for w in trigger_words if w.strip()])
+        
+        # 如果没有单个LoRA配置触发词，使用全局触发词
+        if not trigger_words_set and cls.LORA_TRIGGER_WORDS:
+            trigger_words_set.update(cls.LORA_TRIGGER_WORDS)
+        
+        return list(trigger_words_set)
     
     @classmethod
     def load_prompts(cls, prompts_path: Optional[str] = None) -> None:

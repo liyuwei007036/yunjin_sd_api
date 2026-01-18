@@ -21,7 +21,6 @@ from fastapi.responses import FileResponse, StreamingResponse
 from app.routers import image
 from app.config import Config
 from app.models.schemas import HealthResponse
-from app.services.oss_service import OSSService
 
 
 @asynccontextmanager
@@ -31,7 +30,7 @@ async def lifespan(app: FastAPI):
     logger.info("=" * 50)
     logger.info("SD模型API服务启动中...")
     logger.info("=" * 50)
-    
+
     # 验证配置
     errors = Config.validate()
     if errors:
@@ -41,7 +40,7 @@ async def lifespan(app: FastAPI):
         logger.error("请检查config.yaml配置文件")
     else:
         logger.info("配置验证通过")
-    
+
     # 预加载模型（通过访问服务实例触发）
     logger.info("预加载SD模型...")
     try:
@@ -50,31 +49,31 @@ async def lifespan(app: FastAPI):
         logger.info("SD模型预加载完成")
     except Exception as e:
         logger.error(f"SD模型预加载失败: {e}", exc_info=True)
-    
+
     logger.info("=" * 50)
     logger.info("服务启动完成！")
     logger.info("API文档地址: http://localhost:8000/docs")
     logger.info("=" * 50)
-    
+
     yield
-    
+
     # 关闭时执行资源清理
     logger.info("服务正在关闭...")
     try:
         # 清理路由中的服务实例
         from app.routers.image import cleanup_services
         cleanup_services()
-        
+
         # 清理LLM服务（如果有）
         from app.services.llm_service import _llm_service
         if _llm_service is not None:
             # LLM服务通常不需要特殊清理，主要是HTTP客户端会自动关闭
             gc.collect()
             logger.info("LLM服务已清理")
-        
+
         # 最后强制垃圾回收
         gc.collect()
-        
+
         # 清理PyTorch CUDA缓存（如果有CUDA）
         try:
             import torch
@@ -84,7 +83,7 @@ async def lifespan(app: FastAPI):
                 logger.info("PyTorch CUDA缓存已清理")
         except Exception:
             pass
-        
+
         logger.info("资源清理完成")
     except Exception as e:
         logger.error(f"关闭服务时出错: {e}", exc_info=True)
@@ -135,7 +134,7 @@ async def health_check():
         model_loaded = sd_service is not None and sd_service.text2img_pipeline is not None
     except Exception:
         pass
-    
+
     return HealthResponse(
         status="ok",
         model_loaded=model_loaded
@@ -147,7 +146,7 @@ async def root():
     """根路径，返回前端页面"""
     static_dir = project_root / "static"
     index_file = static_dir / "index.html"
-    
+
     if index_file.exists():
         return FileResponse(str(index_file))
     else:
@@ -169,20 +168,20 @@ async def proxy_image(bucket: str, filename: str):
         # 使用单例OSS服务实例
         from app.routers.image import get_oss_service
         oss_service = get_oss_service()
-        
+
         # 从MinIO获取图片对象
         response = oss_service.client.get_object(bucket, filename)
-        
+
         # 确定内容类型
         content_type = "image/png"  # 默认
         if filename.lower().endswith('.jpg') or filename.lower().endswith('.jpeg'):
             content_type = "image/jpeg"
         elif filename.lower().endswith('.png'):
             content_type = "image/png"
-        
+
         # 返回图片流
         return StreamingResponse(
-            response.stream(32*1024),  # 32KB chunks
+            response.stream(32 * 1024),  # 32KB chunks
             media_type=content_type,
             headers={
                 "Cache-Control": "public, max-age=31536000",  # 缓存1年
@@ -195,4 +194,5 @@ async def proxy_image(bucket: str, filename: str):
 
 if __name__ == "__main__":
     import uvicorn
+
     uvicorn.run(app, host="0.0.0.0", port=8000)

@@ -162,11 +162,13 @@ async function handleText2ImgSubmit(e) {
         return;
     }
 
-    // 如果只有prompt，移除natural_language
-    if (formData.prompt && !formData.natural_language) {
+    // 如果填写了prompt，优先使用prompt，移除natural_language（避免AI转换）
+    if (formData.prompt) {
         delete formData.natural_language;
+        // 如果negative_prompt为空，也删除
+        if (!formData.negative_prompt) delete formData.negative_prompt;
     } else if (formData.natural_language) {
-        // 如果提供了自然语言，移除空的prompt和negative_prompt
+        // 如果只有natural_language，移除空的prompt和negative_prompt
         if (!formData.prompt) delete formData.prompt;
         if (!formData.negative_prompt) delete formData.negative_prompt;
     }
@@ -215,11 +217,13 @@ async function handleImg2ImgSubmit(e) {
         return;
     }
 
-    // 如果只有prompt，移除natural_language
-    if (formData.prompt && !formData.natural_language) {
+    // 如果填写了prompt，优先使用prompt，移除natural_language（避免AI转换）
+    if (formData.prompt) {
         delete formData.natural_language;
+        // 如果negative_prompt为空，也删除
+        if (!formData.negative_prompt) delete formData.negative_prompt;
     } else if (formData.natural_language) {
-        // 如果提供了自然语言，移除空的prompt和negative_prompt
+        // 如果只有natural_language，移除空的prompt和negative_prompt
         if (!formData.prompt) delete formData.prompt;
         if (!formData.negative_prompt) delete formData.negative_prompt;
     }

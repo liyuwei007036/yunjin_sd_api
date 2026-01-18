@@ -11,16 +11,22 @@ lora:
   models:
     - path: "./models/lora/model1.safetensors"
       weight: 1.0
+      trigger_words: ["trigger1", "trigger2"]  # LoRA触发词（重要！必须与训练时使用的触发词一致）
     - path: "./models/lora/model2.safetensors"
       weight: 0.8
+      trigger_words: "trigger3, trigger4"  # 也可以用逗号分隔的字符串
+  # 全局触发词（可选，如果单个LoRA未配置trigger_words，将使用此值）
+  # trigger_words: ["global_trigger1", "global_trigger2"]
 
 # 方式2: 使用目录和文件列表
 # lora:
 #   models_dir: "./models/lora"
 #   models_list: "model1.safetensors,model2.safetensors"
 
-# 默认采样方法（可选）
-# default_scheduler: "DPMSolverMultistepScheduler"
+# 默认采样方法（可选，使用 Kohya 采样器名称）
+# 支持的采样器：Euler a, Euler, LMS, Heun, DPM2, DPM2 a, DPM++ 2M, DPM++ 2M Karras, 
+#              DPM++ SDE, DPM++ SDE Karras, DPM++ 2S a, DDIM, PLMS
+# default_scheduler: "DPM++ 2M Karras"
 
 # MinIO OSS配置
 minio:

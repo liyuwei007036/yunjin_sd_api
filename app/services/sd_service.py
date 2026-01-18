@@ -32,15 +32,27 @@ from app.utils.logger import logger
 
 # Scheduler映射表
 SCHEDULER_MAP = {
-    "DPMSolverMultistepScheduler": DPMSolverMultistepScheduler,
-    "DDIMScheduler": DDIMScheduler,
-    "EulerDiscreteScheduler": EulerDiscreteScheduler,
-    "PNDMScheduler": PNDMScheduler,
-    "LMSDiscreteScheduler": LMSDiscreteScheduler,
-    "EulerAncestralDiscreteScheduler": EulerAncestralDiscreteScheduler,
-    "HeunDiscreteScheduler": HeunDiscreteScheduler,
-    "KDPM2DiscreteScheduler": KDPM2DiscreteScheduler,
-    "KDPM2AncestralDiscreteScheduler": KDPM2AncestralDiscreteScheduler,
+    "Euler a": EulerAncestralDiscreteScheduler,
+    "Euler": EulerDiscreteScheduler,
+    "LMS": LMSDiscreteScheduler,
+    "Heun": HeunDiscreteScheduler,
+    "DPM2": KDPM2DiscreteScheduler,
+    "DPM2 a": KDPM2AncestralDiscreteScheduler,
+    "DPM++ 2M": DPMSolverMultistepScheduler,
+    "DPM++ 2M Karras": DPMSolverMultistepScheduler,
+    "DPM++ SDE": DPMSolverMultistepScheduler,
+    "DPM++ SDE Karras": DPMSolverMultistepScheduler,
+    "DPM++ 2S a": DPMSolverMultistepScheduler,
+    "DDIM": DDIMScheduler,
+    "PLMS": PNDMScheduler,
+}
+
+# 采样器特殊配置
+SCHEDULER_CONFIG = {
+    "DPM++ 2M Karras": {"use_karras_sigmas": True},
+    "DPM++ SDE": {"algorithm_type": "sde-dpmsolver++"},
+    "DPM++ SDE Karras": {"algorithm_type": "sde-dpmsolver++", "use_karras_sigmas": True},
+    "DPM++ 2S a": {"solver_type": "midpoint", "algorithm_type": "dpmsolver++"},
 }
 
 
@@ -89,12 +101,22 @@ class SDService:
         # 加载LoRA模型
         if self.lora_models:
             logger.info(f"加载LoRA模型: {len(self.lora_models)}个")
-            for lora_config in self.lora_models:
+            for idx, lora_config in enumerate(self.lora_models, 1):
                 lora_path = lora_config.get("path")
                 lora_weight = lora_config.get("weight", 1.0)
+                trigger_words = lora_config.get("trigger_words", [])
+                if isinstance(trigger_words, str):
+                    trigger_words = [w.strip() for w in trigger_words.split(",") if w.strip()]
+                
                 if lora_path:
                     try:
-                        logger.info(f"加载LoRA: {lora_path}, 权重: {lora_weight}")
+                        logger.info(f"[LoRA {idx}/{len(self.lora_models)}] 加载LoRA: {lora_path}")
+                        logger.info(f"  - 权重: {lora_weight}")
+                        if trigger_words:
+                            logger.info(f"  - 触发词: {', '.join(trigger_words)}")
+                        else:
+                            logger.warning(f"  - ⚠️ 未配置触发词！这可能导致LoRA效果不明显。")
+                            logger.warning(f"     请在config.yaml中为每个LoRA配置trigger_words字段。")
                         # 将路径转换为Path对象
                         lora_path_obj = Path(lora_path)
                         
@@ -108,7 +130,7 @@ class SDService:
                             try:
                                 self.text2img_pipeline.load_lora_weights(lora_dir, weight_name=weight_name, weight=lora_weight)
                                 self.img2img_pipeline.load_lora_weights(lora_dir, weight_name=weight_name, weight=lora_weight)
-                                logger.info(f"LoRA加载成功: {lora_path}")
+                                logger.info(f"  ✓ LoRA加载成功: {lora_path}")
                             except (ValueError, Exception) as e:
                                 error_msg = str(e)
                                 # 检查是否是LoHA格式错误
@@ -116,7 +138,7 @@ class SDService:
                                     logger.warning(f"检测到LoHA格式，尝试使用手动加载方式: {lora_path}")
                                     try:
                                         self._load_loha_weights(lora_path, lora_weight)
-                                        logger.info(f"LoHA权重手动加载成功: {lora_path}")
+                                        logger.info(f"  ✓ LoHA权重手动加载成功: {lora_path}")
                                     except Exception as loha_error:
                                         logger.error(f"LoHA手动加载也失败: {lora_path}, 错误: {str(loha_error)}")
                                         logger.warning(f"跳过此LoRA模型: {lora_path}")
@@ -127,7 +149,7 @@ class SDService:
                             try:
                                 self.text2img_pipeline.load_lora_weights(lora_path, weight=lora_weight)
                                 self.img2img_pipeline.load_lora_weights(lora_path, weight=lora_weight)
-                                logger.info(f"LoRA加载成功: {lora_path}")
+                                logger.info(f"  ✓ LoRA加载成功: {lora_path}")
                             except (ValueError, Exception) as e:
                                 error_msg = str(e)
                                 # 检查是否是LoHA格式错误
@@ -139,7 +161,7 @@ class SDService:
                                     if safetensors_files:
                                         try:
                                             self._load_loha_weights(str(safetensors_files[0]), lora_weight)
-                                            logger.info(f"LoHA权重手动加载成功: {lora_path}")
+                                            logger.info(f"  ✓ LoHA权重手动加载成功: {lora_path}")
                                         except Exception as loha_error:
                                             logger.error(f"LoHA手动加载也失败: {lora_path}, 错误: {str(loha_error)}")
                                             logger.warning(f"跳过此LoRA模型: {lora_path}")
@@ -158,11 +180,14 @@ class SDService:
                             raise
         
         # 设置默认scheduler
-        if self.default_scheduler and self.default_scheduler in SCHEDULER_MAP:
-            scheduler_class = SCHEDULER_MAP[self.default_scheduler]
-            scheduler = scheduler_class.from_config(self.text2img_pipeline.scheduler.config)
-            self.text2img_pipeline.scheduler = scheduler
-            self.img2img_pipeline.scheduler = scheduler
+        if self.default_scheduler:
+            default_scheduler = self._get_scheduler(self.default_scheduler)
+            if default_scheduler:
+                self.text2img_pipeline.scheduler = default_scheduler
+                self.img2img_pipeline.scheduler = default_scheduler
+                logger.info(f"已设置默认采样器: {self.default_scheduler}")
+            else:
+                logger.warning(f"默认采样器配置无效: {self.default_scheduler}，使用 pipeline 默认采样器")
         
         # 初始化Compel（用于处理prompt权重语法，如(cat:1.5)）
         if COMPEL_AVAILABLE:
@@ -438,11 +463,48 @@ class SDService:
         logger.info(f"LoHA权重加载完成: {lora_path}, 成功应用 {applied_count} 个模块")
     
     def _get_scheduler(self, scheduler_name: Optional[str] = None):
-        """获取scheduler实例"""
-        if scheduler_name and scheduler_name in SCHEDULER_MAP:
-            scheduler_class = SCHEDULER_MAP[scheduler_name]
-            return scheduler_class.from_config(self.text2img_pipeline.scheduler.config)
-        return None
+        """
+        获取scheduler实例
+        
+        Args:
+            scheduler_name: 采样器名称（大小写不敏感）
+            
+        Returns:
+            Scheduler 实例，如果名称无效则返回 None
+        """
+        if not scheduler_name:
+            return None
+        
+        # 大小写不敏感查找
+        scheduler_class = SCHEDULER_MAP.get(scheduler_name)
+        if not scheduler_class:
+            for key in SCHEDULER_MAP.keys():
+                if key.lower() == scheduler_name.lower():
+                    scheduler_class = SCHEDULER_MAP[key]
+                    scheduler_name = key
+                    break
+        
+        if not scheduler_class:
+            logger.warning(f"未知的采样器名称: {scheduler_name}，使用默认采样器")
+            return None
+        
+        try:
+            scheduler = scheduler_class.from_config(self.text2img_pipeline.scheduler.config)
+            
+            # 应用特殊配置
+            if scheduler_name in SCHEDULER_CONFIG:
+                config = SCHEDULER_CONFIG[scheduler_name]
+                for key, value in config.items():
+                    if hasattr(scheduler, key):
+                        setattr(scheduler, key, value)
+                    elif hasattr(scheduler.config, key):
+                        scheduler.config[key] = value
+            
+            logger.debug(f"使用采样器: {scheduler_name} -> {scheduler_class.__name__}")
+            return scheduler
+        except Exception as e:
+            logger.error(f"创建采样器失败: {scheduler_name}, 错误: {e}")
+            return None
     
     def _decode_base64_image(self, base64_str: str) -> Image.Image:
         """解码base64图片"""

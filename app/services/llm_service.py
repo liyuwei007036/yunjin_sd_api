@@ -134,11 +134,24 @@ class LLMService:
             # 解析响应
             prompt, negative_prompt = self._parse_response(response)
             
-            # 添加配置的前缀
+            # 添加LoRA触发词（优先，放在最前面）
+            lora_trigger_words = Config.get_lora_trigger_words()
+            if lora_trigger_words:
+                trigger_str = ", ".join(lora_trigger_words)
+                # 检查提示词中是否已包含触发词（避免重复）
+                prompt_lower = prompt.lower()
+                has_trigger = any(trigger.lower() in prompt_lower for trigger in lora_trigger_words)
+                if not has_trigger:
+                    prompt = f"{trigger_str}, {prompt}"
+                    logger.info(f"已自动添加LoRA触发词: {trigger_str}")
+            
+            # 添加配置的前缀（在触发词之后）
             if Config.LLM_PROMPT_PREFIX:
                 prefix = Config.LLM_PROMPT_PREFIX.strip()
                 if prefix:
-                    prompt = f"{prefix}, {prompt}"
+                    # 检查前缀是否已包含在提示词中
+                    if prefix.lower() not in prompt.lower():
+                        prompt = f"{prefix}, {prompt}"
             
             logger.info(f"基于原图识别的LLM转换成功: 用户要求='{natural_language[:50]}...' -> prompt长度={len(prompt)}")
             return prompt, negative_prompt
@@ -206,11 +219,24 @@ class LLMService:
             # 解析响应
             prompt, negative_prompt = self._parse_response(response)
             
-            # 添加配置的前缀
+            # 添加LoRA触发词（优先，放在最前面）
+            lora_trigger_words = Config.get_lora_trigger_words()
+            if lora_trigger_words:
+                trigger_str = ", ".join(lora_trigger_words)
+                # 检查提示词中是否已包含触发词（避免重复）
+                prompt_lower = prompt.lower()
+                has_trigger = any(trigger.lower() in prompt_lower for trigger in lora_trigger_words)
+                if not has_trigger:
+                    prompt = f"{trigger_str}, {prompt}"
+                    logger.info(f"已自动添加LoRA触发词: {trigger_str}")
+            
+            # 添加配置的前缀（在触发词之后）
             if Config.LLM_PROMPT_PREFIX:
                 prefix = Config.LLM_PROMPT_PREFIX.strip()
                 if prefix:
-                    prompt = f"{prefix}, {prompt}"
+                    # 检查前缀是否已包含在提示词中
+                    if prefix.lower() not in prompt.lower():
+                        prompt = f"{prefix}, {prompt}"
             
             logger.info(f"LLM转换成功: 自然语言='{natural_language[:50]}...' -> prompt长度={len(prompt)}")
             return prompt, negative_prompt

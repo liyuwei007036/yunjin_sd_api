@@ -40,7 +40,7 @@
                     <!-- 自然语言输入 -->
                     <div class="form-group">
                         <label for="text2imgNaturalLanguage" class="form-label">
-                            自然语言描述 <span class="required">*</span>
+                            自然语言描述
                             <span class="tooltip" title="用自然语言描述你想生成的图片，例如：一只可爱的小猫坐在窗台上，阳光透过窗户洒进来">ℹ️</span>
                         </label>
                         <textarea id="text2imgNaturalLanguage" class="textarea-large" rows="4" 
@@ -135,32 +135,37 @@
                             <div class="form-group">
                                 <label for="text2imgScheduler" class="form-label">
                                     采样方法
-                                    <span class="tooltip" title="选择采样算法，不同采样器有不同的特点：&#10;• DPMSolverMultistepScheduler: 推荐，质量好速度快，适合大多数场景&#10;• DDIMScheduler: 稳定但较慢，适合需要精确控制的场景&#10;• EulerDiscreteScheduler: 快速，质量不错，适合快速生成&#10;• EulerAncestralDiscreteScheduler: 快速且随机性强，每次结果差异较大&#10;• PNDMScheduler: 经典方法，稳定但较慢&#10;• LMSDiscreteScheduler: 线性多步采样，平衡质量和速度&#10;• HeunDiscreteScheduler: 高质量但较慢&#10;• KDPM2DiscreteScheduler: 快速，质量一般&#10;• KDPM2AncestralDiscreteScheduler: 快速且随机性强">ℹ️</span>
+                                    <span class="tooltip" title="选择采样算法（与 Kohya 对齐）：&#10;• DPM++ 2M Karras: 最推荐，最佳质量&#10;• DPM++ 2M: 推荐，高质量速度快&#10;• Euler a: 快速，随机性强&#10;• Euler: 快速，可重复&#10;• DDIM: 稳定，质量好&#10;• 其他采样器请参考文档">ℹ️</span>
                                 </label>
                                 <select id="text2imgScheduler" class="select">
                                     <option value="">使用默认</option>
-                                    <option value="DPMSolverMultistepScheduler" title="推荐：质量好速度快，适合大多数场景">DPMSolverMultistepScheduler (推荐)</option>
-                                    <option value="DDIMScheduler" title="稳定但较慢，适合需要精确控制的场景">DDIMScheduler (稳定)</option>
-                                    <option value="EulerDiscreteScheduler" title="快速，质量不错，适合快速生成">EulerDiscreteScheduler (快速)</option>
-                                    <option value="EulerAncestralDiscreteScheduler" title="快速且随机性强，每次结果差异较大">EulerAncestralDiscreteScheduler (快速随机)</option>
-                                    <option value="PNDMScheduler" title="经典方法，稳定但较慢">PNDMScheduler (经典)</option>
-                                    <option value="LMSDiscreteScheduler" title="线性多步采样，平衡质量和速度">LMSDiscreteScheduler (平衡)</option>
-                                    <option value="HeunDiscreteScheduler" title="高质量但较慢">HeunDiscreteScheduler (高质量)</option>
-                                    <option value="KDPM2DiscreteScheduler" title="快速，质量一般">KDPM2DiscreteScheduler (快速)</option>
-                                    <option value="KDPM2AncestralDiscreteScheduler" title="快速且随机性强">KDPM2AncestralDiscreteScheduler (快速随机)</option>
+                                    <option value="DPM++ 2M Karras" title="最推荐：最佳质量">DPM++ 2M Karras (最推荐)</option>
+                                    <option value="DPM++ 2M" title="推荐：高质量速度快">DPM++ 2M (推荐)</option>
+                                    <option value="DPM++ SDE" title="高质量，随机性高">DPM++ SDE</option>
+                                    <option value="DPM++ SDE Karras" title="高质量，随机性高">DPM++ SDE Karras</option>
+                                    <option value="DPM++ 2S a" title="高质量，随机性高">DPM++ 2S a</option>
+                                    <option value="DPM2" title="高质量，速度中等">DPM2</option>
+                                    <option value="DPM2 a" title="高质量，随机性较高">DPM2 a</option>
+                                    <option value="Euler a" title="快速，随机性强">Euler a (快速随机)</option>
+                                    <option value="Euler" title="快速，可重复">Euler (快速)</option>
+                                    <option value="DDIM" title="稳定，质量好">DDIM (稳定)</option>
+                                    <option value="LMS" title="平衡质量和速度">LMS (平衡)</option>
+                                    <option value="Heun" title="高质量但较慢">Heun (高质量)</option>
+                                    <option value="PLMS" title="经典方法">PLMS (经典)</option>
                                 </select>
                                 <div class="param-description">
-                                    <strong>采样器说明：</strong>
+                                    <strong>采样器说明（与 Kohya 对齐）：</strong>
                                     <ul>
-                                        <li><strong>DPMSolverMultistepScheduler</strong>：推荐使用，质量好速度快，适合大多数场景</li>
-                                        <li><strong>DDIMScheduler</strong>：稳定但较慢，适合需要精确控制的场景</li>
-                                        <li><strong>EulerDiscreteScheduler</strong>：快速，质量不错，适合快速生成</li>
-                                        <li><strong>EulerAncestralDiscreteScheduler</strong>：快速且随机性强，每次结果差异较大</li>
-                                        <li><strong>PNDMScheduler</strong>：经典方法，稳定但较慢</li>
-                                        <li><strong>LMSDiscreteScheduler</strong>：线性多步采样，平衡质量和速度</li>
-                                        <li><strong>HeunDiscreteScheduler</strong>：高质量但较慢</li>
-                                        <li><strong>KDPM2DiscreteScheduler</strong>：快速，质量一般</li>
-                                        <li><strong>KDPM2AncestralDiscreteScheduler</strong>：快速且随机性强</li>
+                                        <li><strong>DPM++ 2M Karras</strong>：最推荐，最佳质量</li>
+                                        <li><strong>DPM++ 2M</strong>：推荐，高质量速度快</li>
+                                        <li><strong>Euler a</strong>：快速，随机性强，适合需要多样性</li>
+                                        <li><strong>Euler</strong>：快速，可重复，适合快速生成</li>
+                                        <li><strong>DDIM</strong>：稳定，质量好</li>
+                                        <li><strong>DPM2</strong>：高质量，速度中等</li>
+                                        <li><strong>DPM2 a</strong>：高质量，随机性较高</li>
+                                        <li><strong>LMS</strong>：平衡质量和速度</li>
+                                        <li><strong>Heun</strong>：高质量但较慢</li>
+                                        <li><strong>PLMS</strong>：经典方法，稳定但较慢</li>
                                     </ul>
                                 </div>
                             </div>
@@ -219,7 +224,7 @@
                     <!-- 自然语言输入 -->
                     <div class="form-group">
                         <label for="img2imgNaturalLanguage" class="form-label">
-                            自然语言描述 <span class="required">*</span>
+                            自然语言描述
                             <span class="tooltip" title="用自然语言描述你想如何修改图片">ℹ️</span>
                         </label>
                         <textarea id="img2imgNaturalLanguage" class="textarea-large" rows="4" 
@@ -308,32 +313,36 @@
                             <div class="form-group">
                                 <label for="img2imgScheduler" class="form-label">
                                     采样方法
-                                    <span class="tooltip" title="选择采样算法，不同采样器有不同的特点：&#10;• DPMSolverMultistepScheduler: 推荐，质量好速度快，适合大多数场景&#10;• DDIMScheduler: 稳定但较慢，适合需要精确控制的场景&#10;• EulerDiscreteScheduler: 快速，质量不错，适合快速生成&#10;• EulerAncestralDiscreteScheduler: 快速且随机性强，每次结果差异较大&#10;• PNDMScheduler: 经典方法，稳定但较慢&#10;• LMSDiscreteScheduler: 线性多步采样，平衡质量和速度&#10;• HeunDiscreteScheduler: 高质量但较慢&#10;• KDPM2DiscreteScheduler: 快速，质量一般&#10;• KDPM2AncestralDiscreteScheduler: 快速且随机性强">ℹ️</span>
+                                    <span class="tooltip" title="选择采样算法（与 Kohya 对齐）：&#10;• DPM++ 2M Karras: 最推荐，最佳质量&#10;• DPM++ 2M: 推荐，高质量速度快&#10;• Euler a: 快速，随机性强&#10;• Euler: 快速，可重复&#10;• DDIM: 稳定，质量好&#10;• 其他采样器请参考文档">ℹ️</span>
                                 </label>
                                 <select id="img2imgScheduler" class="select">
                                     <option value="">使用默认</option>
-                                    <option value="DPMSolverMultistepScheduler" title="推荐：质量好速度快，适合大多数场景">DPMSolverMultistepScheduler (推荐)</option>
-                                    <option value="DDIMScheduler" title="稳定但较慢，适合需要精确控制的场景">DDIMScheduler (稳定)</option>
-                                    <option value="EulerDiscreteScheduler" title="快速，质量不错，适合快速生成">EulerDiscreteScheduler (快速)</option>
-                                    <option value="EulerAncestralDiscreteScheduler" title="快速且随机性强，每次结果差异较大">EulerAncestralDiscreteScheduler (快速随机)</option>
-                                    <option value="PNDMScheduler" title="经典方法，稳定但较慢">PNDMScheduler (经典)</option>
-                                    <option value="LMSDiscreteScheduler" title="线性多步采样，平衡质量和速度">LMSDiscreteScheduler (平衡)</option>
-                                    <option value="HeunDiscreteScheduler" title="高质量但较慢">HeunDiscreteScheduler (高质量)</option>
-                                    <option value="KDPM2DiscreteScheduler" title="快速，质量一般">KDPM2DiscreteScheduler (快速)</option>
-                                    <option value="KDPM2AncestralDiscreteScheduler" title="快速且随机性强">KDPM2AncestralDiscreteScheduler (快速随机)</option>
+                                    <option value="DPM++ 2M Karras" title="最推荐：最佳质量">DPM++ 2M Karras (最推荐)</option>
+                                    <option value="DPM++ 2M" title="推荐：高质量速度快">DPM++ 2M (推荐)</option>
+                                    <option value="DPM++ SDE" title="高质量，随机性高">DPM++ SDE</option>
+                                    <option value="DPM++ SDE Karras" title="高质量，随机性高">DPM++ SDE Karras</option>
+                                    <option value="DPM++ 2S a" title="高质量，随机性高">DPM++ 2S a</option>
+                                    <option value="DPM2" title="高质量，速度中等">DPM2</option>
+                                    <option value="DPM2 a" title="高质量，随机性较高">DPM2 a</option>
+                                    <option value="Euler a" title="快速，随机性强">Euler a (快速随机)</option>
+                                    <option value="Euler" title="快速，可重复">Euler (快速)</option>
+                                    <option value="DDIM" title="稳定，质量好">DDIM (稳定)</option>
+                                    <option value="LMS" title="平衡质量和速度">LMS (平衡)</option>
+                                    <option value="Heun" title="高质量但较慢">Heun (高质量)</option>
+                                    <option value="PLMS" title="经典方法">PLMS (经典)</option>
                                 </select>
                                 <div class="param-description">
-                                    <strong>采样器说明：</strong>
                                     <ul>
-                                        <li><strong>DPMSolverMultistepScheduler</strong>：推荐使用，质量好速度快，适合大多数场景</li>
-                                        <li><strong>DDIMScheduler</strong>：稳定但较慢，适合需要精确控制的场景</li>
-                                        <li><strong>EulerDiscreteScheduler</strong>：快速，质量不错，适合快速生成</li>
-                                        <li><strong>EulerAncestralDiscreteScheduler</strong>：快速且随机性强，每次结果差异较大</li>
-                                        <li><strong>PNDMScheduler</strong>：经典方法，稳定但较慢</li>
-                                        <li><strong>LMSDiscreteScheduler</strong>：线性多步采样，平衡质量和速度</li>
-                                        <li><strong>HeunDiscreteScheduler</strong>：高质量但较慢</li>
-                                        <li><strong>KDPM2DiscreteScheduler</strong>：快速，质量一般</li>
-                                        <li><strong>KDPM2AncestralDiscreteScheduler</strong>：快速且随机性强</li>
+                                        <li><strong>DPM++ 2M Karras</strong>：最推荐，最佳质量</li>
+                                        <li><strong>DPM++ 2M</strong>：推荐，高质量速度快</li>
+                                        <li><strong>Euler a</strong>：快速，随机性强，适合需要多样性</li>
+                                        <li><strong>Euler</strong>：快速，可重复，适合快速生成</li>
+                                        <li><strong>DDIM</strong>：稳定，质量好</li>
+                                        <li><strong>DPM2</strong>：高质量，速度中等</li>
+                                        <li><strong>DPM2 a</strong>：高质量，随机性较高</li>
+                                        <li><strong>LMS</strong>：平衡质量和速度</li>
+                                        <li><strong>Heun</strong>：高质量但较慢</li>
+                                        <li><strong>PLMS</strong>：经典方法，稳定但较慢</li>
                                     </ul>
                                 </div>
                             </div>
