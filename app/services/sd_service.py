@@ -20,6 +20,12 @@ from diffusers import (
     KDPM2DiscreteScheduler,
     KDPM2AncestralDiscreteScheduler,
 )
+try:
+    from compel import Compel
+    COMPEL_AVAILABLE = True
+except ImportError:
+    COMPEL_AVAILABLE = False
+    logger.warning("Compel库未安装，prompt权重语法将无法使用。请运行: pip install compel")
 from app.config import Config
 from app.utils.logger import logger
 
@@ -51,6 +57,9 @@ class SDService:
         # 初始化pipeline
         self.text2img_pipeline = None
         self.img2img_pipeline = None
+        # Compel实例（用于处理prompt权重）
+        self.compel = None
+        self.compel_negative = None
         self._load_models()
     
     def _load_models(self):
@@ -154,6 +163,25 @@ class SDService:
             scheduler = scheduler_class.from_config(self.text2img_pipeline.scheduler.config)
             self.text2img_pipeline.scheduler = scheduler
             self.img2img_pipeline.scheduler = scheduler
+        
+        # 初始化Compel（用于处理prompt权重语法，如(cat:1.5)）
+        if COMPEL_AVAILABLE:
+            try:
+                self.compel = Compel(
+                    tokenizer=self.text2img_pipeline.tokenizer,
+                    text_encoder=self.text2img_pipeline.text_encoder
+                )
+                self.compel_negative = Compel(
+                    tokenizer=self.text2img_pipeline.tokenizer,
+                    text_encoder=self.text2img_pipeline.text_encoder
+                )
+                logger.info("Compel已初始化，支持prompt权重语法（如(cat:1.5)）")
+            except Exception as e:
+                logger.warning(f"Compel初始化失败: {e}，将使用普通prompt处理")
+                self.compel = None
+                self.compel_negative = None
+        else:
+            logger.warning("Compel库未安装，prompt权重语法将无法使用")
         
         logger.info("SD模型加载完成")
     
@@ -412,14 +440,40 @@ class SDService:
         if seed is not None:
             generator = torch.Generator(device=self.device).manual_seed(seed)
         
+        # 检查是否使用Compel处理prompt权重（如果prompt中包含权重语法）
+        use_compel = self.compel is not None and ("(" in prompt or "[" in prompt or ":" in prompt)
+        
         # 准备参数
         generate_kwargs = {
-            "prompt": prompt,
             "num_images_per_prompt": num_images,
         }
         
-        if negative_prompt:
-            generate_kwargs["negative_prompt"] = negative_prompt
+        # 使用Compel处理prompt权重（如果可用）
+        if use_compel:
+            try:
+                # 处理正提示词
+                prompt_embeds = self.compel(prompt)
+                generate_kwargs["prompt_embeds"] = prompt_embeds
+                
+                # 处理负面提示词（如果提供）
+                if negative_prompt:
+                    negative_prompt_embeds = self.compel_negative(negative_prompt)
+                    generate_kwargs["negative_prompt_embeds"] = negative_prompt_embeds
+                # 如果没有负面提示词，不设置negative_prompt_embeds，让pipeline使用默认值
+                
+                logger.debug(f"使用Compel处理prompt权重: {prompt[:50]}...")
+            except Exception as e:
+                logger.warning(f"Compel处理prompt失败，回退到普通模式: {e}")
+                # 回退到普通模式
+                generate_kwargs["prompt"] = prompt
+                if negative_prompt:
+                    generate_kwargs["negative_prompt"] = negative_prompt
+        else:
+            # 普通模式，直接使用prompt字符串
+            generate_kwargs["prompt"] = prompt
+            if negative_prompt:
+                generate_kwargs["negative_prompt"] = negative_prompt
+        
         if width:
             generate_kwargs["width"] = width
         if height:
@@ -486,15 +540,41 @@ class SDService:
         if seed is not None:
             generator = torch.Generator(device=self.device).manual_seed(seed)
         
+        # 检查是否使用Compel处理prompt权重（如果prompt中包含权重语法）
+        use_compel = self.compel is not None and ("(" in prompt or "[" in prompt or ":" in prompt)
+        
         # 准备参数
         generate_kwargs = {
-            "prompt": prompt,
             "image": init_image,
             "num_images_per_prompt": num_images,
         }
         
-        if negative_prompt:
-            generate_kwargs["negative_prompt"] = negative_prompt
+        # 使用Compel处理prompt权重（如果可用）
+        if use_compel:
+            try:
+                # 处理正提示词
+                prompt_embeds = self.compel(prompt)
+                generate_kwargs["prompt_embeds"] = prompt_embeds
+                
+                # 处理负面提示词（如果提供）
+                if negative_prompt:
+                    negative_prompt_embeds = self.compel_negative(negative_prompt)
+                    generate_kwargs["negative_prompt_embeds"] = negative_prompt_embeds
+                # 如果没有负面提示词，不设置negative_prompt_embeds，让pipeline使用默认值
+                
+                logger.debug(f"使用Compel处理prompt权重: {prompt[:50]}...")
+            except Exception as e:
+                logger.warning(f"Compel处理prompt失败，回退到普通模式: {e}")
+                # 回退到普通模式
+                generate_kwargs["prompt"] = prompt
+                if negative_prompt:
+                    generate_kwargs["negative_prompt"] = negative_prompt
+        else:
+            # 普通模式，直接使用prompt字符串
+            generate_kwargs["prompt"] = prompt
+            if negative_prompt:
+                generate_kwargs["negative_prompt"] = negative_prompt
+        
         if num_inference_steps:
             generate_kwargs["num_inference_steps"] = num_inference_steps
         if guidance_scale:
