@@ -1,17 +1,58 @@
 """
 FastAPI应用入口
 """
+from contextlib import asynccontextmanager
 from fastapi import FastAPI, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from app.routers import image
 from app.config import Config
 from app.models.schemas import HealthResponse
 
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """应用生命周期管理"""
+    # 启动时执行
+    print("=" * 50)
+    print("SD模型API服务启动中...")
+    print("=" * 50)
+    
+    # 验证配置
+    errors = Config.validate()
+    if errors:
+        print("配置验证失败:")
+        for error in errors:
+            print(f"  - {error}")
+        print("请检查config.yaml配置文件")
+    else:
+        print("配置验证通过")
+    
+    # 预加载模型（通过访问服务实例触发）
+    print("预加载SD模型...")
+    try:
+        from app.routers.image import get_sd_service
+        sd_service = get_sd_service()
+        print("SD模型预加载完成")
+    except Exception as e:
+        print(f"SD模型预加载失败: {e}")
+    
+    print("=" * 50)
+    print("服务启动完成！")
+    print("API文档地址: http://localhost:8000/docs")
+    print("=" * 50)
+    
+    yield
+    
+    # 关闭时执行（如果需要清理资源，可以在这里添加）
+    pass
+
+
 # 创建FastAPI应用
 app = FastAPI(
     title="SD模型API服务",
     description="基于Stable Diffusion的图片生成API服务，支持文生图和图生图",
     version="1.0.0",
+    lifespan=lifespan,
 )
 
 # 配置CORS（如果需要）
@@ -50,38 +91,6 @@ async def health_check():
         status="ok",
         model_loaded=model_loaded
     )
-
-
-@app.on_event("startup")
-async def startup_event():
-    """应用启动时执行"""
-    print("=" * 50)
-    print("SD模型API服务启动中...")
-    print("=" * 50)
-    
-    # 验证配置
-    errors = Config.validate()
-    if errors:
-        print("配置验证失败:")
-        for error in errors:
-            print(f"  - {error}")
-        print("请检查config.yaml配置文件")
-    else:
-        print("配置验证通过")
-    
-    # 预加载模型（通过访问服务实例触发）
-    print("预加载SD模型...")
-    try:
-        from app.routers.image import get_sd_service
-        sd_service = get_sd_service()
-        print("SD模型预加载完成")
-    except Exception as e:
-        print(f"SD模型预加载失败: {e}")
-    
-    print("=" * 50)
-    print("服务启动完成！")
-    print("API文档地址: http://localhost:8000/docs")
-    print("=" * 50)
 
 
 @app.get("/", summary="根路径")
