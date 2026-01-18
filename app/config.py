@@ -54,10 +54,15 @@ class Config:
     LLM_PROVIDER: str = "openai"
     LLM_API_BASE: Optional[str] = None
     LLM_API_KEY: Optional[str] = None
-    LLM_MODEL: str = "gpt-3.5-turbo"
+    LLM_MODEL: str = "gpt-3.5-turbo"  # 默认模型（用于文生图）
     LLM_TEMPERATURE: float = 0.7
     LLM_TIMEOUT: int = 30
     LLM_PROMPT_PREFIX: Optional[str] = None  # 提示词前缀，会在生成的prompt前自动添加
+    
+    # 图生图专用VL模型配置（可选）
+    LLM_VISION_MODEL: Optional[str] = None  # 图生图使用的VL模型（如gpt-4o, claude-3-sonnet）
+    LLM_VISION_API_BASE: Optional[str] = None  # VL模型的API地址（如果与普通模型不同）
+    LLM_VISION_API_KEY: Optional[str] = None  # VL模型的API密钥（如果与普通模型不同）
     
     @classmethod
     def load_config(cls, config_path: Optional[str] = None) -> None:
@@ -126,6 +131,12 @@ class Config:
         cls.LLM_TEMPERATURE = llm_config.get("temperature", cls.LLM_TEMPERATURE)
         cls.LLM_TIMEOUT = llm_config.get("timeout", cls.LLM_TIMEOUT)
         cls.LLM_PROMPT_PREFIX = llm_config.get("prompt_prefix")
+        
+        # 加载图生图VL模型配置（可选）
+        vision_config = llm_config.get("vision", {})
+        cls.LLM_VISION_MODEL = vision_config.get("model")  # 如果未配置，使用普通模型
+        cls.LLM_VISION_API_BASE = vision_config.get("api_base")  # 如果未配置，使用普通API地址
+        cls.LLM_VISION_API_KEY = vision_config.get("api_key")  # 如果未配置，使用普通API密钥
         
         # 加载LoRA模型
         cls.load_lora_models()

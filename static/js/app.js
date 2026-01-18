@@ -199,7 +199,10 @@ async function handleImg2ImgSubmit(e) {
         num_images: parseInt(document.getElementById('img2imgNumImages').value) || 1,
         num_inference_steps: parseInt(document.getElementById('img2imgSteps').value) || null,
         guidance_scale: parseFloat(document.getElementById('img2imgGuidance').value) || null,
-        strength: parseFloat(document.getElementById('img2imgStrength').value) || null,
+        strength: (() => {
+            const val = document.getElementById('img2imgStrength').value;
+            return val !== '' ? parseFloat(val) : null;
+        })(),
         scheduler: document.getElementById('img2imgScheduler').value || null,
         seed: document.getElementById('img2imgSeed').value ? parseInt(document.getElementById('img2imgSeed').value) : null,
         output_format: document.querySelector('input[name="img2imgFormat"]:checked').value || 'png',
@@ -252,6 +255,20 @@ async function submitGenerateRequest(formData) {
         document.getElementById('apiKeyInput').value = apiKey.trim();
     }
     
+    // 显示加载动画
+    showLoadingAnimation();
+    
+    // 禁用所有生成按钮并显示加载状态
+    const generateButtons = document.querySelectorAll('.btn-primary.btn-large');
+    generateButtons.forEach(btn => {
+        const originalText = btn.textContent;
+        btn.dataset.originalText = originalText;
+        btn.disabled = true;
+        btn.style.opacity = '0.6';
+        btn.style.cursor = 'not-allowed';
+        btn.innerHTML = '🔄 生成中...';
+    });
+    
     // 清除null和空字符串的字段
     Object.keys(formData).forEach(key => {
         if (formData[key] === null || formData[key] === '') {
@@ -259,19 +276,31 @@ async function submitGenerateRequest(formData) {
         }
     });
 
-    const response = await api.generateImage(formData);
-    currentTaskId = response.task_id;
+    try {
+        const response = await api.generateImage(formData);
+        currentTaskId = response.task_id;
 
-    // 添加到历史记录
-    addToHistory({
-        taskId: response.task_id,
-        status: response.status,
-        timestamp: new Date().toISOString(),
-        params: formData
-    });
+        // 添加到历史记录
+        addToHistory({
+            taskId: response.task_id,
+            status: response.status,
+            timestamp: new Date().toISOString(),
+            params: formData
+        });
 
-    // 开始轮询任务状态
-    startPolling(response.task_id);
+        // 开始轮询任务状态
+        startPolling(response.task_id);
+    } catch (error) {
+        // 隐藏加载动画
+        hideLoadingAnimation();
+        // 恢复按钮状态
+        generateButtons.forEach(btn => {
+            btn.disabled = false;
+            btn.style.opacity = '1';
+            btn.style.cursor = 'pointer';
+        });
+        throw error;
+    }
 }
 
 function startPolling(taskId) {
@@ -310,6 +339,16 @@ async function checkTaskStatus(taskId) {
             // 如果完成，显示结果
             if (status.status === 'completed') {
                 showResult(status);
+            } else if (status.status === 'failed') {
+                // 失败时也隐藏加载动画
+                hideLoadingAnimation();
+                const generateButtons = document.querySelectorAll('.btn-primary.btn-large');
+                generateButtons.forEach(btn => {
+                    btn.disabled = false;
+                    btn.style.opacity = '1';
+                    btn.style.cursor = 'pointer';
+                });
+                showError(status.error_message || '任务执行失败');
             }
         }
     } catch (error) {
@@ -345,6 +384,21 @@ function updateTaskStatus(status) {
 }
 
 function showResult(status) {
+    // 隐藏加载动画
+    hideLoadingAnimation();
+    
+    // 恢复按钮状态
+    const generateButtons = document.querySelectorAll('.btn-primary.btn-large');
+    generateButtons.forEach(btn => {
+        btn.disabled = false;
+        btn.style.opacity = '1';
+        btn.style.cursor = 'pointer';
+        if (btn.dataset.originalText) {
+            btn.textContent = btn.dataset.originalText;
+            delete btn.dataset.originalText;
+        }
+    });
+    
     const resultImagesDiv = document.getElementById('resultImages');
     resultImagesDiv.innerHTML = '';
 
@@ -414,8 +468,48 @@ function downloadImage(url, index) {
 }
 
 function showError(message) {
+    // 隐藏加载动画
+    hideLoadingAnimation();
+    
+    // 恢复按钮状态
+    const generateButtons = document.querySelectorAll('.btn-primary.btn-large');
+    generateButtons.forEach(btn => {
+        btn.disabled = false;
+        btn.style.opacity = '1';
+        btn.style.cursor = 'pointer';
+        if (btn.dataset.originalText) {
+            btn.textContent = btn.dataset.originalText;
+            delete btn.dataset.originalText;
+        }
+    });
+    
     const resultImagesDiv = document.getElementById('resultImages');
     resultImagesDiv.innerHTML = `<div class="error-message">错误: ${message}</div>`;
+}
+
+// 显示加载动画
+function showLoadingAnimation() {
+    const resultImagesDiv = document.getElementById('resultImages');
+    resultImagesDiv.innerHTML = `
+        <div class="loading-container">
+            <div class="loading-spinner">
+                <div class="spinner-ring"></div>
+                <div class="spinner-ring"></div>
+                <div class="spinner-ring"></div>
+            </div>
+            <div class="loading-text">正在生成图片，请稍候...</div>
+            <div class="loading-dots">
+                <span></span>
+                <span></span>
+                <span></span>
+            </div>
+        </div>
+    `;
+}
+
+// 隐藏加载动画
+function hideLoadingAnimation() {
+    // 加载动画会在showResult或showError中被清除，这里不需要额外操作
 }
 
 // 生成随机种子

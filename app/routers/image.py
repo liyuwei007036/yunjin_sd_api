@@ -188,6 +188,9 @@ async def generate_image(
     prompt = request.prompt
     negative_prompt = request.negative_prompt
     
+    # 判断是否为图生图任务
+    is_img2img = bool(request.init_image and request.init_image.strip())
+    
     if request.natural_language:
         # 使用自然语言，需要转换为提示词
         llm_service = get_llm_service()
@@ -198,8 +201,22 @@ async def generate_image(
             )
         
         try:
-            logger.info(f"开始LLM转换: natural_language='{request.natural_language[:50]}...'")
-            converted_prompt, converted_negative_prompt = llm_service.convert_to_prompts(request.natural_language)
+            task_type = "图生图" if is_img2img else "文生图"
+            logger.info(f"开始LLM转换 ({task_type}): natural_language='{request.natural_language[:50]}...'")
+            
+            # 如果是图生图且有原图，使用基于原图识别的方法
+            if is_img2img and request.init_image:
+                logger.info("使用基于原图识别的LLM转换方法，生成贴近原图的prompt")
+                converted_prompt, converted_negative_prompt = llm_service.convert_img2img_prompts_with_image(
+                    request.natural_language,
+                    request.init_image
+                )
+            else:
+                # 普通模式（文生图或没有原图的图生图）
+                converted_prompt, converted_negative_prompt = llm_service.convert_to_prompts(
+                    request.natural_language, 
+                    is_img2img=is_img2img
+                )
             
             # 如果用户提供了手动prompt，则使用用户提供的（覆盖LLM生成的）
             if not prompt or not prompt.strip():
@@ -207,7 +224,7 @@ async def generate_image(
             if not negative_prompt or not negative_prompt.strip():
                 negative_prompt = converted_negative_prompt
             
-            logger.info(f"LLM转换完成: prompt长度={len(prompt)}, negative_prompt长度={len(negative_prompt)}")
+            logger.info(f"LLM转换完成 ({task_type}): prompt长度={len(prompt)}, negative_prompt长度={len(negative_prompt)}")
         except Exception as e:
             error_msg = f"自然语言转换失败: {str(e)}"
             logger.error(error_msg, exc_info=True)

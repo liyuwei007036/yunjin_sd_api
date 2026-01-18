@@ -529,6 +529,14 @@ class SDService:
         if isinstance(init_image, str):
             init_image = self._decode_base64_image(init_image)
         
+        # 确保图片是RGB格式
+        if init_image.mode != "RGB":
+            init_image = init_image.convert("RGB")
+        
+        # 记录原图尺寸
+        original_size = init_image.size
+        logger.info(f"图生图 - 原图尺寸: {original_size}, 模式: {init_image.mode}")
+        
         # 设置scheduler
         if scheduler:
             new_scheduler = self._get_scheduler(scheduler)
@@ -579,16 +587,35 @@ class SDService:
             generate_kwargs["num_inference_steps"] = num_inference_steps
         if guidance_scale:
             generate_kwargs["guidance_scale"] = guidance_scale
-        if strength:
+        # 修复：strength 参数处理 - 如果为 None，使用默认值 0.75，但允许显式设置为 0.0
+        if strength is not None:
+            # 确保 strength 在有效范围内
+            strength = max(0.0, min(1.0, float(strength)))
             generate_kwargs["strength"] = strength
+            logger.info(f"图生图 - 使用 strength: {strength}")
+        else:
+            # 如果没有设置 strength，使用默认值 0.75（这是 diffusers 的默认值）
+            generate_kwargs["strength"] = 0.75
+            logger.info(f"图生图 - 使用默认 strength: 0.75（未指定时）")
         if generator:
             generate_kwargs["generator"] = generator
         
         # 合并额外参数
         generate_kwargs.update(kwargs)
         
+        # 记录生成参数（用于调试）
+        logger.info(f"图生图参数 - prompt长度: {len(prompt)}, strength: {generate_kwargs.get('strength')}, "
+                   f"guidance_scale: {generate_kwargs.get('guidance_scale')}, "
+                   f"num_inference_steps: {generate_kwargs.get('num_inference_steps')}, "
+                   f"原图尺寸: {original_size}")
+        
         # 生成图片
         result = self.img2img_pipeline(**generate_kwargs)
+        
+        # 记录生成结果尺寸
+        if result.images:
+            result_size = result.images[0].size if isinstance(result.images, list) else result.images.size
+            logger.info(f"图生图完成 - 生成图片尺寸: {result_size}, 数量: {len(result.images) if isinstance(result.images, list) else 1}")
         
         images = result.images
         

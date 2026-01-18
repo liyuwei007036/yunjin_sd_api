@@ -60,7 +60,15 @@ llm:
   provider: "openai"  # 或 "custom"
   api_base: "https://api.openai.com/v1"  # LLM API地址
   api_key: "your_api_key"  # LLM API密钥
-  model: "gpt-3.5-turbo"  # 使用的模型名称
+  model: "gpt-3.5-turbo"  # 文生图使用的模型（普通LLM，便宜）
   temperature: 0.7  # 生成温度，0.0-1.0
   timeout: 30  # 请求超时时间（秒）
   prompt_prefix: ""  # 提示词前缀，会在所有生成的prompt前自动添加，例如："masterpiece, best quality"
+  
+  # 图生图专用VL模型配置（可选，推荐配置以节省成本）
+  # 如果未配置，图生图将使用上面的普通模型
+  # 如果配置了但模型不支持视觉输入，会自动回退到普通模式
+  vision:
+    model: "gpt-4o"  # 图生图使用的VL模型（支持视觉输入，效果好）
+    # api_base: "https://api.openai.com/v1"  # 如果与普通模型相同，可省略
+    # api_key: "your_api_key"  # 如果与普通模型相同，可省略
