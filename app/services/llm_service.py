@@ -58,9 +58,29 @@ class LLMService:
         vision_config = self._get_vision_config()
         vision_model = vision_config["model"]
         
-        # 检查模型是否支持视觉输入（GPT-4V, Claude Vision等）
-        vision_models = ["gpt-4-vision-preview", "gpt-4o", "gpt-4-turbo", "claude-3-opus", "claude-3-sonnet", "claude-3-haiku"]
-        is_vision_model = any(vm in vision_model.lower() for vm in vision_models)
+        # 检查模型是否支持视觉输入（GPT-4V, Claude Vision, GLM, Qwen-VL等）
+        vision_models = [
+            # OpenAI
+            "gpt-4-vision-preview", "gpt-4o", "gpt-4-turbo", "gpt-4-vision",
+            # Anthropic Claude
+            "claude-3-opus", "claude-3-sonnet", "claude-3-haiku", "claude-3.5-sonnet",
+            # GLM (智谱AI)
+            "glm-4v", "glm-4.6v", "glm-4-vision", "glm-4-flash-vision",
+            # Qwen (通义千问)
+            "qwen-vl", "qwen-vl-plus", "qwen-vl-max", "qwen2-vl",
+            # Gemini (Google)
+            "gemini-pro-vision", "gemini-1.5-pro", "gemini-1.5-flash",
+            # 其他常见视觉模型
+            "llava", "minigpt", "blip", "instructblip"
+        ]
+        # 检查模型名称是否包含任何视觉模型关键词
+        vision_model_lower = vision_model.lower()
+        is_vision_model = any(vm in vision_model_lower for vm in vision_models)
+        
+        # 额外检查：如果模型名称包含 "vision" 或 "vl" 或 "visual"，也认为是视觉模型
+        if not is_vision_model:
+            vision_keywords = ["vision", "vl", "visual", "image", "multimodal"]
+            is_vision_model = any(keyword in vision_model_lower for keyword in vision_keywords)
         
         if not is_vision_model:
             # 如果不支持视觉，回退到普通模式
