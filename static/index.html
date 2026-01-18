@@ -1,0 +1,361 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SD模型图片生成 - 自然语言输入</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+    <div class="container">
+        <!-- 头部 -->
+        <header class="header">
+            <h1>🎨 SD模型图片生成</h1>
+            <div class="header-actions">
+                <button id="savePresetBtn" class="btn btn-secondary">保存预设</button>
+                <select id="loadPresetSelect" class="preset-select">
+                    <option value="">加载预设...</option>
+                </select>
+            </div>
+        </header>
+
+        <!-- 主内容区 -->
+        <div class="main-content">
+            <!-- 左侧：输入区域 -->
+            <div class="input-panel">
+                <!-- 模式切换标签页 -->
+                <div class="tabs">
+                    <button class="tab-btn active" data-mode="text2img">文生图</button>
+                    <button class="tab-btn" data-mode="img2img">图生图</button>
+                </div>
+
+                <!-- 文生图表单 -->
+                <form id="text2imgForm" class="form-panel active">
+                    <!-- 自然语言输入 -->
+                    <div class="form-group">
+                        <label for="text2imgNaturalLanguage" class="form-label">
+                            自然语言描述 <span class="required">*</span>
+                            <span class="tooltip" title="用自然语言描述你想生成的图片，例如：一只可爱的小猫坐在窗台上，阳光透过窗户洒进来">ℹ️</span>
+                        </label>
+                        <textarea id="text2imgNaturalLanguage" class="textarea-large" rows="4" 
+                            placeholder="例如：一只可爱的小猫坐在窗台上，阳光透过窗户洒进来"></textarea>
+                    </div>
+
+                    <!-- 高级选项（可折叠） -->
+                    <div class="collapsible">
+                        <button type="button" class="collapsible-btn" onclick="toggleCollapsible(this)">
+                            <span>高级选项</span>
+                            <span class="icon">▼</span>
+                        </button>
+                        <div class="collapsible-content">
+                            <!-- 手动提示词 -->
+                            <div class="form-group">
+                                <label class="form-label">
+                                    手动提示词（可选，覆盖AI生成）
+                                    <span class="tooltip" title="如果填写，将覆盖自动生成的提示词">ℹ️</span>
+                                </label>
+                                <div class="form-row">
+                                    <div class="form-col">
+                                        <label for="text2imgPrompt" class="form-label-small">Prompt:</label>
+                                        <textarea id="text2imgPrompt" class="textarea-medium" rows="3" 
+                                            placeholder="正向提示词"></textarea>
+                                    </div>
+                                    <div class="form-col">
+                                        <label for="text2imgNegativePrompt" class="form-label-small">Negative Prompt:</label>
+                                        <textarea id="text2imgNegativePrompt" class="textarea-medium" rows="3" 
+                                            placeholder="负面提示词"></textarea>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- 图片尺寸 -->
+                            <div class="form-group">
+                                <label class="form-label">
+                                    图片尺寸
+                                    <span class="tooltip" title="生成图片的宽度和高度（像素）">ℹ️</span>
+                                </label>
+                                <div class="form-row">
+                                    <div class="form-col">
+                                        <label for="text2imgWidth" class="form-label-small">宽度:</label>
+                                        <input type="number" id="text2imgWidth" class="input-number" value="512" min="128" max="2048" step="64">
+                                    </div>
+                                    <div class="form-col">
+                                        <label for="text2imgHeight" class="form-label-small">高度:</label>
+                                        <input type="number" id="text2imgHeight" class="input-number" value="512" min="128" max="2048" step="64">
+                                    </div>
+                                </div>
+                                <div class="preset-buttons">
+                                    <button type="button" class="preset-btn" onclick="setSize(512, 512)">512×512</button>
+                                    <button type="button" class="preset-btn" onclick="setSize(768, 768)">768×768</button>
+                                    <button type="button" class="preset-btn" onclick="setSize(1024, 1024)">1024×1024</button>
+                                    <button type="button" class="preset-btn" onclick="setSize(1024, 768)">1024×768</button>
+                                    <button type="button" class="preset-btn" onclick="setSize(768, 1024)">768×1024</button>
+                                </div>
+                            </div>
+
+                            <!-- 生成参数 -->
+                            <div class="form-group">
+                                <label class="form-label">生成参数</label>
+                                <div class="slider-group">
+                                    <label for="text2imgNumImages" class="form-label-small">
+                                        生成数量: <span id="text2imgNumImagesValue">1</span>
+                                        <span class="tooltip" title="一次生成多少张图片（1-10）">ℹ️</span>
+                                    </label>
+                                    <input type="range" id="text2imgNumImages" class="slider" min="1" max="10" value="1" 
+                                        oninput="document.getElementById('text2imgNumImagesValue').textContent = this.value">
+                                </div>
+                                <div class="slider-group">
+                                    <label for="text2imgSteps" class="form-label-small">
+                                        推理步数: <span id="text2imgStepsValue">30</span>
+                                        <span class="tooltip" title="生成时的迭代步数，步数越多质量越好但速度越慢（20-50）">ℹ️</span>
+                                    </label>
+                                    <input type="range" id="text2imgSteps" class="slider" min="20" max="50" value="30" step="5"
+                                        oninput="document.getElementById('text2imgStepsValue').textContent = this.value">
+                                </div>
+                                <div class="slider-group">
+                                    <label for="text2imgGuidance" class="form-label-small">
+                                        引导强度: <span id="text2imgGuidanceValue">7.5</span>
+                                        <span class="tooltip" title="控制模型对提示词的遵循程度（5.0-15.0）">ℹ️</span>
+                                    </label>
+                                    <input type="range" id="text2imgGuidance" class="slider" min="5" max="15" value="7.5" step="0.5"
+                                        oninput="document.getElementById('text2imgGuidanceValue').textContent = this.value">
+                                </div>
+                            </div>
+
+                            <!-- 采样设置 -->
+                            <div class="form-group">
+                                <label for="text2imgScheduler" class="form-label">
+                                    采样方法
+                                    <span class="tooltip" title="选择采样算法">ℹ️</span>
+                                </label>
+                                <select id="text2imgScheduler" class="select">
+                                    <option value="">使用默认</option>
+                                    <option value="DPMSolverMultistepScheduler">DPMSolverMultistepScheduler</option>
+                                    <option value="DDIMScheduler">DDIMScheduler</option>
+                                    <option value="EulerDiscreteScheduler">EulerDiscreteScheduler</option>
+                                    <option value="EulerAncestralDiscreteScheduler">EulerAncestralDiscreteScheduler</option>
+                                    <option value="PNDMScheduler">PNDMScheduler</option>
+                                    <option value="LMSDiscreteScheduler">LMSDiscreteScheduler</option>
+                                    <option value="HeunDiscreteScheduler">HeunDiscreteScheduler</option>
+                                    <option value="KDPM2DiscreteScheduler">KDPM2DiscreteScheduler</option>
+                                    <option value="KDPM2AncestralDiscreteScheduler">KDPM2AncestralDiscreteScheduler</option>
+                                </select>
+                            </div>
+
+                            <div class="form-group">
+                                <label for="text2imgSeed" class="form-label">
+                                    随机种子
+                                    <span class="tooltip" title="使用相同seed可生成相同图片，留空则随机">ℹ️</span>
+                                </label>
+                                    <div class="form-row">
+                                        <input type="number" id="text2imgSeed" class="input-number" placeholder="留空则随机">
+                                        <button type="button" class="btn btn-small" onclick="generateRandomSeed('text2imgSeed')">随机生成</button>
+                                    </div>
+                            </div>
+
+                            <!-- 输出设置 -->
+                            <div class="form-group">
+                                <label class="form-label">输出格式</label>
+                                <div class="radio-group">
+                                    <label><input type="radio" name="text2imgFormat" value="png" checked> PNG</label>
+                                    <label><input type="radio" name="text2imgFormat" value="jpg"> JPG</label>
+                                    <label><input type="radio" name="text2imgFormat" value="jpeg"> JPEG</label>
+                                </div>
+                            </div>
+
+                            <div class="form-group">
+                                <label for="text2imgCallback" class="form-label">
+                                    回调URL（可选）
+                                    <span class="tooltip" title="生成完成后将结果推送到此URL">ℹ️</span>
+                                </label>
+                                <input type="url" id="text2imgCallback" class="input" placeholder="https://example.com/callback">
+                            </div>
+                        </div>
+                    </div>
+
+                    <button type="submit" class="btn btn-primary btn-large">生成图片</button>
+                </form>
+
+                <!-- 图生图表单 -->
+                <form id="img2imgForm" class="form-panel">
+                    <!-- 图片上传 -->
+                    <div class="form-group">
+                        <label class="form-label">
+                            上传图片 <span class="required">*</span>
+                            <span class="tooltip" title="拖拽图片到这里或点击上传（PNG/JPEG）">ℹ️</span>
+                        </label>
+                        <div id="img2imgUploadArea" class="upload-area">
+                            <input type="file" id="img2imgFileInput" accept="image/png,image/jpeg,image/jpg" style="display: none">
+                            <div class="upload-placeholder">
+                                <span>📷 点击或拖拽图片到这里</span>
+                            </div>
+                            <img id="img2imgPreview" class="upload-preview" style="display: none;">
+                        </div>
+                    </div>
+
+                    <!-- 自然语言输入 -->
+                    <div class="form-group">
+                        <label for="img2imgNaturalLanguage" class="form-label">
+                            自然语言描述 <span class="required">*</span>
+                            <span class="tooltip" title="用自然语言描述你想如何修改图片">ℹ️</span>
+                        </label>
+                        <textarea id="img2imgNaturalLanguage" class="textarea-large" rows="4" 
+                            placeholder="例如：将图片转换为动漫风格，色彩更鲜艳"></textarea>
+                    </div>
+
+                    <!-- 高级选项（可折叠） -->
+                    <div class="collapsible">
+                        <button type="button" class="collapsible-btn" onclick="toggleCollapsible(this)">
+                            <span>高级选项</span>
+                            <span class="icon">▼</span>
+                        </button>
+                        <div class="collapsible-content">
+                            <!-- 手动提示词 -->
+                            <div class="form-group">
+                                <label class="form-label">
+                                    手动提示词（可选，覆盖AI生成）
+                                    <span class="tooltip" title="如果填写，将覆盖自动生成的提示词">ℹ️</span>
+                                </label>
+                                <div class="form-row">
+                                    <div class="form-col">
+                                        <label for="img2imgPrompt" class="form-label-small">Prompt:</label>
+                                        <textarea id="img2imgPrompt" class="textarea-medium" rows="3" 
+                                            placeholder="正向提示词"></textarea>
+                                    </div>
+                                    <div class="form-col">
+                                        <label for="img2imgNegativePrompt" class="form-label-small">Negative Prompt:</label>
+                                        <textarea id="img2imgNegativePrompt" class="textarea-medium" rows="3" 
+                                            placeholder="负面提示词"></textarea>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- 图生图强度 -->
+                            <div class="form-group">
+                                <label class="form-label">图生图参数</label>
+                                <div class="slider-group">
+                                    <label for="img2imgStrength" class="form-label-small">
+                                        图生图强度: <span id="img2imgStrengthValue">0.75</span>
+                                        <span class="tooltip" title="控制对原图的修改程度（0.0-1.0）">ℹ️</span>
+                                    </label>
+                                    <input type="range" id="img2imgStrength" class="slider" min="0" max="1" value="0.75" step="0.1"
+                                        oninput="document.getElementById('img2imgStrengthValue').textContent = this.value">
+                                    <div class="slider-hint">
+                                        <span>0.0=几乎不修改</span>
+                                        <span>0.5=中等变化</span>
+                                        <span>1.0=接近重新生成</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- 生成参数（同文生图） -->
+                            <div class="form-group">
+                                <label class="form-label">生成参数</label>
+                                <div class="slider-group">
+                                    <label for="img2imgNumImages" class="form-label-small">
+                                        生成数量: <span id="img2imgNumImagesValue">1</span>
+                                        <span class="tooltip" title="一次生成多少张图片（1-10）">ℹ️</span>
+                                    </label>
+                                    <input type="range" id="img2imgNumImages" class="slider" min="1" max="10" value="1"
+                                        oninput="document.getElementById('img2imgNumImagesValue').textContent = this.value">
+                                </div>
+                                <div class="slider-group">
+                                    <label for="img2imgSteps" class="form-label-small">
+                                        推理步数: <span id="img2imgStepsValue">30</span>
+                                        <span class="tooltip" title="生成时的迭代步数（20-50）">ℹ️</span>
+                                    </label>
+                                    <input type="range" id="img2imgSteps" class="slider" min="20" max="50" value="30" step="5"
+                                        oninput="document.getElementById('img2imgStepsValue').textContent = this.value">
+                                </div>
+                                <div class="slider-group">
+                                    <label for="img2imgGuidance" class="form-label-small">
+                                        引导强度: <span id="img2imgGuidanceValue">7.5</span>
+                                        <span class="tooltip" title="控制模型对提示词的遵循程度（5.0-15.0）">ℹ️</span>
+                                    </label>
+                                    <input type="range" id="img2imgGuidance" class="slider" min="5" max="15" value="7.5" step="0.5"
+                                        oninput="document.getElementById('img2imgGuidanceValue').textContent = this.value">
+                                </div>
+                            </div>
+
+                            <!-- 采样设置（同文生图） -->
+                            <div class="form-group">
+                                <label for="img2imgScheduler" class="form-label">
+                                    采样方法
+                                    <span class="tooltip" title="选择采样算法">ℹ️</span>
+                                </label>
+                                <select id="img2imgScheduler" class="select">
+                                    <option value="">使用默认</option>
+                                    <option value="DPMSolverMultistepScheduler">DPMSolverMultistepScheduler</option>
+                                    <option value="DDIMScheduler">DDIMScheduler</option>
+                                    <option value="EulerDiscreteScheduler">EulerDiscreteScheduler</option>
+                                    <option value="EulerAncestralDiscreteScheduler">EulerAncestralDiscreteScheduler</option>
+                                    <option value="PNDMScheduler">PNDMScheduler</option>
+                                    <option value="LMSDiscreteScheduler">LMSDiscreteScheduler</option>
+                                    <option value="HeunDiscreteScheduler">HeunDiscreteScheduler</option>
+                                    <option value="KDPM2DiscreteScheduler">KDPM2DiscreteScheduler</option>
+                                    <option value="KDPM2AncestralDiscreteScheduler">KDPM2AncestralDiscreteScheduler</option>
+                                </select>
+                            </div>
+
+                            <div class="form-group">
+                                <label for="img2imgSeed" class="form-label">
+                                    随机种子
+                                    <span class="tooltip" title="使用相同seed可生成相同图片，留空则随机">ℹ️</span>
+                                </label>
+                                <div class="form-row">
+                                    <input type="number" id="img2imgSeed" class="input-number" placeholder="留空则随机">
+                                    <button type="button" class="btn btn-small" onclick="generateRandomSeed('img2imgSeed')">随机生成</button>
+                                </div>
+                            </div>
+
+                            <!-- 输出设置（同文生图） -->
+                            <div class="form-group">
+                                <label class="form-label">输出格式</label>
+                                <div class="radio-group">
+                                    <label><input type="radio" name="img2imgFormat" value="png" checked> PNG</label>
+                                    <label><input type="radio" name="img2imgFormat" value="jpg"> JPG</label>
+                                    <label><input type="radio" name="img2imgFormat" value="jpeg"> JPEG</label>
+                                </div>
+                            </div>
+
+                            <div class="form-group">
+                                <label for="img2imgCallback" class="form-label">
+                                    回调URL（可选）
+                                    <span class="tooltip" title="生成完成后将结果推送到此URL">ℹ️</span>
+                                </label>
+                                <input type="url" id="img2imgCallback" class="input" placeholder="https://example.com/callback">
+                            </div>
+                        </div>
+                    </div>
+
+                    <button type="submit" class="btn btn-primary btn-large">生成图片</button>
+                </form>
+            </div>
+
+            <!-- 右侧：结果展示区域 -->
+            <div class="result-panel">
+                <h2>生成结果</h2>
+                <div id="taskStatus" class="task-status" style="display: none;">
+                    <div class="status-info">
+                        <span class="status-label">任务状态:</span>
+                        <span id="statusText" class="status-text">pending</span>
+                    </div>
+                    <div id="taskProgress" class="task-progress" style="display: none;">
+                        <div class="progress-bar">
+                            <div class="progress-fill"></div>
+                        </div>
+                    </div>
+                </div>
+                <div id="resultImages" class="result-images"></div>
+                <div id="taskHistory" class="task-history">
+                    <h3>任务历史</h3>
+                    <div id="historyList" class="history-list"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="/static/js/api.js"></script>
+    <script src="/static/js/app.js"></script>
+</body>
+</html>

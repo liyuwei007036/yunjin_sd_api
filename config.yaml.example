@@ -53,3 +53,13 @@ health_check:
 # 任务数据库配置
 task_db:
   path: "tasks.db"
+
+# LLM配置（用于自然语言转提示词，可选）
+# 如果不配置，将无法使用自然语言输入功能
+llm:
+  provider: "openai"  # 或 "custom"
+  api_base: "https://api.openai.com/v1"  # LLM API地址
+  api_key: "your_api_key"  # LLM API密钥
+  model: "gpt-3.5-turbo"  # 使用的模型名称
+  temperature: 0.7  # 生成温度，0.0-1.0
+  timeout: 30  # 请求超时时间（秒）

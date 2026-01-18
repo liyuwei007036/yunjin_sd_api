@@ -50,6 +50,14 @@ class Config:
     # 任务数据库配置
     TASK_DB_PATH: str = "tasks.db"
     
+    # LLM配置
+    LLM_PROVIDER: str = "openai"
+    LLM_API_BASE: Optional[str] = None
+    LLM_API_KEY: Optional[str] = None
+    LLM_MODEL: str = "gpt-3.5-turbo"
+    LLM_TEMPERATURE: float = 0.7
+    LLM_TIMEOUT: int = 30
+    
     @classmethod
     def load_config(cls, config_path: Optional[str] = None) -> None:
         """从YAML文件加载配置"""
@@ -107,6 +115,15 @@ class Config:
         
         # 加载任务数据库配置
         cls.TASK_DB_PATH = cls._config_data.get("task_db", {}).get("path", cls.TASK_DB_PATH)
+        
+        # 加载LLM配置
+        llm_config = cls._config_data.get("llm", {})
+        cls.LLM_PROVIDER = llm_config.get("provider", cls.LLM_PROVIDER)
+        cls.LLM_API_BASE = llm_config.get("api_base")
+        cls.LLM_API_KEY = llm_config.get("api_key")
+        cls.LLM_MODEL = llm_config.get("model", cls.LLM_MODEL)
+        cls.LLM_TEMPERATURE = llm_config.get("temperature", cls.LLM_TEMPERATURE)
+        cls.LLM_TIMEOUT = llm_config.get("timeout", cls.LLM_TIMEOUT)
         
         # 加载LoRA模型
         cls.load_lora_models()

@@ -10,6 +10,7 @@ from app.models.task import TaskStatus
 from app.services.sd_service import SDService
 from app.services.oss_service import OSSService
 from app.services.callback_service import CallbackService
+from app.services.llm_service import get_llm_service
 from app.utils.task_manager import task_manager
 from app.auth import require_auth
 from app.utils.logger import logger
@@ -180,8 +181,42 @@ async def generate_image(
     
     - 如果提供init_image参数，则执行图生图
     - 如果不提供init_image参数，则执行文生图
+    - 如果提供natural_language，将自动转换为prompt和negative_prompt
     - 返回task_id，任务将在后台异步执行
     """
+    # 处理自然语言转换
+    prompt = request.prompt
+    negative_prompt = request.negative_prompt
+    
+    if request.natural_language:
+        # 使用自然语言，需要转换为提示词
+        llm_service = get_llm_service()
+        if not llm_service:
+            raise HTTPException(
+                status_code=503,
+                detail="LLM服务未配置，无法使用自然语言输入功能。请在config.yaml中配置llm相关参数，或使用prompt和negative_prompt字段"
+            )
+        
+        try:
+            logger.info(f"开始LLM转换: natural_language='{request.natural_language[:50]}...'")
+            converted_prompt, converted_negative_prompt = llm_service.convert_to_prompts(request.natural_language)
+            
+            # 如果用户提供了手动prompt，则使用用户提供的（覆盖LLM生成的）
+            if not prompt or not prompt.strip():
+                prompt = converted_prompt
+            if not negative_prompt or not negative_prompt.strip():
+                negative_prompt = converted_negative_prompt
+            
+            logger.info(f"LLM转换完成: prompt长度={len(prompt)}, negative_prompt长度={len(negative_prompt)}")
+        except Exception as e:
+            error_msg = f"自然语言转换失败: {str(e)}"
+            logger.error(error_msg, exc_info=True)
+            raise HTTPException(status_code=500, detail=error_msg)
+    
+    # 确保prompt不为空
+    if not prompt or not prompt.strip():
+        raise HTTPException(status_code=400, detail="必须提供prompt或natural_language字段")
+    
     # 生成任务ID
     task_id = str(uuid.uuid4())
     
@@ -192,9 +227,9 @@ async def generate_image(
     background_tasks.add_task(
         generate_image_task,
         task_id=task_id,
-        prompt=request.prompt,
+        prompt=prompt,
         init_image=request.init_image,
-        negative_prompt=request.negative_prompt,
+        negative_prompt=negative_prompt,
         num_images=request.num_images or 1,
         scheduler=request.scheduler,
         seed=request.seed,

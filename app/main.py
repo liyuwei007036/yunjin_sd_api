@@ -15,6 +15,8 @@ from app.utils.logger import logger
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse
 from app.routers import image
 from app.config import Config
 from app.models.schemas import HealthResponse
@@ -78,6 +80,12 @@ app.add_middleware(
 # 注册路由
 app.include_router(image.router)
 
+# 配置静态文件服务
+static_dir = project_root / "static"
+if static_dir.exists():
+    # 挂载静态文件目录（用于CSS、JS等资源）
+    app.mount("/static", StaticFiles(directory=str(static_dir)), name="static")
+
 
 @app.get("/health", response_model=HealthResponse, summary="健康检查")
 @app.get("/api/health", response_model=HealthResponse, summary="健康检查")
@@ -106,12 +114,18 @@ async def health_check():
 
 @app.get("/", summary="根路径")
 async def root():
-    """根路径"""
-    return {
-        "message": "SD模型API服务",
-        "docs": "/docs",
-        "health": "/health"
-    }
+    """根路径，返回前端页面"""
+    static_dir = project_root / "static"
+    index_file = static_dir / "index.html"
+    
+    if index_file.exists():
+        return FileResponse(str(index_file))
+    else:
+        return {
+            "message": "SD模型API服务",
+            "docs": "/docs",
+            "health": "/health"
+        }
 
 
 if __name__ == "__main__":

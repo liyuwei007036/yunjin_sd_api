@@ -8,7 +8,8 @@ from urllib.parse import urlparse
 
 class GenerateRequest(BaseModel):
     """图片生成请求模型"""
-    prompt: str = Field(..., description="提示词")
+    natural_language: Optional[str] = Field(None, description="自然语言描述，将自动转换为提示词。如果提供此字段，将覆盖prompt和negative_prompt")
+    prompt: Optional[str] = Field(None, description="提示词。如果不提供natural_language，则此字段为必填")
     init_image: Optional[str] = Field(None, description="初始图片base64编码，如果提供则执行图生图，否则执行文生图")
     negative_prompt: Optional[str] = Field(None, description="负面提示词")
     width: Optional[int] = Field(None, description="图片宽度")
@@ -42,6 +43,12 @@ class GenerateRequest(BaseModel):
         if v and (v < 1 or v > 10):
             raise ValueError("num_images必须在1-10之间")
         return v or 1
+    
+    def model_post_init(self, __context):
+        """模型初始化后的验证"""
+        # 如果既没有natural_language也没有prompt，则报错
+        if not self.natural_language and (not self.prompt or not self.prompt.strip()):
+            raise ValueError("必须提供natural_language或prompt字段之一")
 
 
 class GenerateResponse(BaseModel):
