@@ -27,26 +27,41 @@ class OSSService:
     
     def _ensure_bucket_exists(self):
         """确保bucket存在，如果不存在则创建"""
+        # 首先尝试直接创建bucket（如果不存在）
+        # 这样可以避免 bucket_exists() 的权限检查问题
         try:
-            if not self.client.bucket_exists(self.bucket):
-                self.client.make_bucket(self.bucket)
-                logger.info(f"创建bucket: {self.bucket}")
+            self.client.make_bucket(self.bucket)
+            logger.info(f"创建bucket: {self.bucket}")
         except S3Error as e:
-            # 如果是权限错误，尝试直接创建bucket（可能没有检查权限但有创建权限）
-            if e.code == "AccessDenied":
+            # BucketAlreadyOwnedByYou 或 BucketAlreadyExists 表示bucket已存在，这是正常情况
+            if e.code in ("BucketAlreadyOwnedByYou", "BucketAlreadyExists"):
+                logger.info(f"Bucket {self.bucket} 已存在")
+            # AccessDenied 可能表示：
+            # 1. bucket已存在但没有检查权限（可以继续使用）
+            # 2. 没有创建权限（需要检查用户权限）
+            elif e.code == "AccessDenied":
+                # 尝试检查bucket是否存在（即使没有ListBucket权限，也可能有GetBucketLocation权限）
                 try:
-                    self.client.make_bucket(self.bucket)
-                    logger.info(f"创建bucket: {self.bucket}")
-                except S3Error as create_error:
-                    # 如果创建也失败，可能是bucket已存在但没有访问权限，记录警告但不阻止初始化
-                    # 实际使用时可能仍然可以上传文件
-                    if create_error.code == "BucketAlreadyOwnedByYou" or create_error.code == "BucketAlreadyExists":
-                        logger.warning(f"Bucket {self.bucket} 已存在但无法检查，可能在后续使用中正常工作")
+                    # 尝试列出bucket中的对象（即使为空）来验证bucket是否存在
+                    # 如果bucket不存在，会返回NoSuchBucket
+                    objects = list(self.client.list_objects(self.bucket, max_keys=1))
+                    logger.info(f"Bucket {self.bucket} 已存在（通过列表对象验证）")
+                except S3Error as list_error:
+                    if list_error.code == "NoSuchBucket":
+                        logger.error(f"Bucket {self.bucket} 不存在且无法创建，请检查用户权限")
+                        raise
+                    elif list_error.code == "AccessDenied":
+                        # 既不能创建也不能检查，可能是权限不足
+                        logger.warning(
+                            f"无法检查或创建bucket {self.bucket}，权限可能不足。"
+                            f"请确保用户具有 s3:CreateBucket, s3:ListBucket, s3:GetBucketLocation 权限。"
+                            f"服务将继续运行，但可能在上传时遇到问题"
+                        )
                     else:
-                        logger.warning(f"无法创建或检查bucket {self.bucket}: {create_error}。如果bucket已存在，服务可能仍可正常工作")
+                        logger.warning(f"检查bucket时出错: {list_error}，服务将继续运行")
             else:
                 # 其他错误，记录但不阻止初始化（可能是网络问题等临时性错误）
-                logger.warning(f"检查bucket失败: {e}。服务将继续运行，但可能在上传时遇到问题")
+                logger.warning(f"创建bucket时出错: {e}。服务将继续运行，但可能在上传时遇到问题")
     
     def _generate_filename(self, output_format: str = "png") -> str:
         """生成唯一文件名"""
