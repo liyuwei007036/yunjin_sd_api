@@ -2,6 +2,7 @@
 SD模型生成服务（支持LoRA）
 """
 import torch
+from pathlib import Path
 from typing import List, Optional, Dict, Any, Union
 from PIL import Image
 import numpy as np
@@ -19,6 +20,7 @@ from diffusers import (
     KDPM2AncestralDiscreteScheduler,
 )
 from app.config import Config
+from app.utils.logger import logger
 
 
 # Scheduler映射表
@@ -52,7 +54,7 @@ class SDService:
     
     def _load_models(self):
         """加载SD模型和LoRA"""
-        print(f"加载SD模型: {self.model_path}, 设备: {self.device}")
+        logger.info(f"加载SD模型: {self.model_path}, 设备: {self.device}")
         
         # 加载文生图pipeline
         self.text2img_pipeline = StableDiffusionPipeline.from_pretrained(
@@ -70,20 +72,36 @@ class SDService:
             requires_safety_checker=False,
         )
         
+        # 移动到设备（在加载LoRA之前）
+        self.text2img_pipeline = self.text2img_pipeline.to(self.device)
+        self.img2img_pipeline = self.img2img_pipeline.to(self.device)
+        
         # 加载LoRA模型
         if self.lora_models:
-            print(f"加载LoRA模型: {len(self.lora_models)}个")
+            logger.info(f"加载LoRA模型: {len(self.lora_models)}个")
             for lora_config in self.lora_models:
                 lora_path = lora_config.get("path")
                 lora_weight = lora_config.get("weight", 1.0)
                 if lora_path:
-                    print(f"  - 加载LoRA: {lora_path}, 权重: {lora_weight}")
-                    self.text2img_pipeline.load_lora_weights(lora_path, weight=lora_weight)
-                    self.img2img_pipeline.load_lora_weights(lora_path, weight=lora_weight)
-        
-        # 移动到设备
-        self.text2img_pipeline = self.text2img_pipeline.to(self.device)
-        self.img2img_pipeline = self.img2img_pipeline.to(self.device)
+                    try:
+                        logger.info(f"加载LoRA: {lora_path}, 权重: {lora_weight}")
+                        # 将路径转换为Path对象
+                        lora_path_obj = Path(lora_path)
+                        
+                        # 检查是否是文件路径（通过扩展名判断）
+                        if lora_path_obj.suffix.lower() in ['.safetensors', '.bin', '.pt', '.ckpt']:
+                            # 文件路径，需要分离目录和文件名
+                            lora_dir = str(lora_path_obj.parent.resolve())
+                            weight_name = lora_path_obj.name
+                            self.text2img_pipeline.load_lora_weights(lora_dir, weight_name=weight_name, weight=lora_weight)
+                            self.img2img_pipeline.load_lora_weights(lora_dir, weight_name=weight_name, weight=lora_weight)
+                        else:
+                            # 目录路径，直接使用
+                            self.text2img_pipeline.load_lora_weights(lora_path, weight=lora_weight)
+                            self.img2img_pipeline.load_lora_weights(lora_path, weight=lora_weight)
+                    except Exception as e:
+                        logger.error(f"LoRA加载失败: {lora_path}, 错误: {str(e)}", exc_info=True)
+                        raise
         
         # 设置默认scheduler
         if self.default_scheduler and self.default_scheduler in SCHEDULER_MAP:
@@ -92,7 +110,7 @@ class SDService:
             self.text2img_pipeline.scheduler = scheduler
             self.img2img_pipeline.scheduler = scheduler
         
-        print("SD模型加载完成")
+        logger.info("SD模型加载完成")
     
     def _get_scheduler(self, scheduler_name: Optional[str] = None):
         """获取scheduler实例"""

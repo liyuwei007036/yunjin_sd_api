@@ -1,8 +1,19 @@
 """
 FastAPI应用入口
 """
+import sys
+from pathlib import Path
+
+# 添加项目根目录到sys.path，确保可以导入app模块
+project_root = Path(__file__).parent.parent
+if str(project_root) not in sys.path:
+    sys.path.insert(0, str(project_root))
+
+# 尽早初始化日志系统，抑制第三方库的详细日志
+from app.utils.logger import logger
+
 from contextlib import asynccontextmanager
-from fastapi import FastAPI, Depends
+from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.routers import image
 from app.config import Config
@@ -13,38 +24,38 @@ from app.models.schemas import HealthResponse
 async def lifespan(app: FastAPI):
     """应用生命周期管理"""
     # 启动时执行
-    print("=" * 50)
-    print("SD模型API服务启动中...")
-    print("=" * 50)
+    logger.info("=" * 50)
+    logger.info("SD模型API服务启动中...")
+    logger.info("=" * 50)
     
     # 验证配置
     errors = Config.validate()
     if errors:
-        print("配置验证失败:")
+        logger.error("配置验证失败:")
         for error in errors:
-            print(f"  - {error}")
-        print("请检查config.yaml配置文件")
+            logger.error(f"  - {error}")
+        logger.error("请检查config.yaml配置文件")
     else:
-        print("配置验证通过")
+        logger.info("配置验证通过")
     
     # 预加载模型（通过访问服务实例触发）
-    print("预加载SD模型...")
+    logger.info("预加载SD模型...")
     try:
         from app.routers.image import get_sd_service
         sd_service = get_sd_service()
-        print("SD模型预加载完成")
+        logger.info("SD模型预加载完成")
     except Exception as e:
-        print(f"SD模型预加载失败: {e}")
+        logger.error(f"SD模型预加载失败: {e}", exc_info=True)
     
-    print("=" * 50)
-    print("服务启动完成！")
-    print("API文档地址: http://localhost:8000/docs")
-    print("=" * 50)
+    logger.info("=" * 50)
+    logger.info("服务启动完成！")
+    logger.info("API文档地址: http://localhost:8000/docs")
+    logger.info("=" * 50)
     
     yield
     
     # 关闭时执行（如果需要清理资源，可以在这里添加）
-    pass
+    logger.info("服务正在关闭...")
 
 
 # 创建FastAPI应用

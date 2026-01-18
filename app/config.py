@@ -4,6 +4,7 @@
 import yaml
 from typing import List, Dict, Optional, Any
 from pathlib import Path
+from app.utils.logger import logger
 
 
 class Config:
@@ -164,5 +165,5 @@ class Config:
 try:
     Config.load_config()
 except FileNotFoundError as e:
-    print(f"警告: {e}")
-    print("使用默认配置，请创建 config.yaml 文件")
+    logger.warning(f"警告: {e}")
+    logger.warning("使用默认配置，请创建 config.yaml 文件")

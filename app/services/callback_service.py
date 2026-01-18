@@ -4,7 +4,9 @@
 import asyncio
 import httpx
 from typing import Optional, List
+from urllib.parse import urlparse
 from app.config import Config
+from app.utils.logger import logger
 
 
 class CallbackService:
@@ -35,6 +37,24 @@ class CallbackService:
             image_urls: 图片URL列表（当num_images>1时）
             error_message: 错误信息（失败时）
         """
+        # 验证callback_url是否有效
+        if not callback_url or not callback_url.strip():
+            logger.warning(f"回调URL为空，跳过推送: task_id={task_id}")
+            return
+        
+        # 检查URL格式
+        try:
+            parsed = urlparse(callback_url)
+            if not parsed.scheme or parsed.scheme not in ["http", "https"]:
+                logger.warning(f"回调URL格式无效（缺少协议）: task_id={task_id}, callback_url={callback_url}")
+                return
+            if not parsed.netloc:
+                logger.warning(f"回调URL格式无效（缺少域名）: task_id={task_id}, callback_url={callback_url}")
+                return
+        except Exception as e:
+            logger.warning(f"回调URL格式验证失败: task_id={task_id}, callback_url={callback_url}, error={e}")
+            return
+        
         # 构造回调数据
         callback_data = {
             "task_id": task_id,
@@ -59,14 +79,14 @@ class CallbackService:
                         headers={"Content-Type": "application/json"}
                     )
                     response.raise_for_status()
-                    print(f"回调推送成功: task_id={task_id}, callback_url={callback_url}")
+                    logger.info(f"回调推送成功: task_id={task_id}, callback_url={callback_url}")
                     return  # 成功则返回
             except Exception as e:
                 if attempt < self.retry_times - 1:
-                    print(f"回调推送失败（尝试 {attempt + 1}/{self.retry_times}）: {e}, 将在{self.retry_interval}秒后重试")
+                    logger.warning(f"回调推送失败（尝试 {attempt + 1}/{self.retry_times}）: {e}, 将在{self.retry_interval}秒后重试")
                     await asyncio.sleep(self.retry_interval)
                 else:
-                    print(f"回调推送最终失败: task_id={task_id}, callback_url={callback_url}, error={e}")
+                    logger.error(f"回调推送最终失败: task_id={task_id}, callback_url={callback_url}, error={e}")
 
 
 # 全局回调服务实例

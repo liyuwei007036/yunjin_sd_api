@@ -3,6 +3,7 @@ Pydantic数据模型：请求/响应Schema
 """
 from typing import Optional, List, Literal
 from pydantic import BaseModel, Field, field_validator
+from urllib.parse import urlparse
 
 
 class GenerateRequest(BaseModel):
@@ -20,6 +21,20 @@ class GenerateRequest(BaseModel):
     seed: Optional[int] = Field(None, description="随机种子，用于控制生成结果的可复现性")
     output_format: Optional[Literal["png", "jpg", "jpeg"]] = Field("png", description="输出图片格式")
     callback_url: Optional[str] = Field(None, description="回调URL，生成完成后将结果推送到该URL")
+    
+    @field_validator("callback_url")
+    @classmethod
+    def validate_callback_url(cls, v):
+        """验证callback_url是否为有效的URL格式"""
+        if v is None or v == "":
+            return None
+        # 检查是否包含协议
+        parsed = urlparse(v)
+        if not parsed.scheme or parsed.scheme not in ["http", "https"]:
+            raise ValueError("callback_url必须是有效的URL，且必须包含http://或https://协议")
+        if not parsed.netloc:
+            raise ValueError("callback_url必须包含有效的域名或IP地址")
+        return v
     
     @field_validator("num_images")
     @classmethod

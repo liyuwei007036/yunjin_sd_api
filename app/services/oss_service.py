@@ -8,6 +8,7 @@ from PIL import Image
 from minio import Minio
 from minio.error import S3Error
 from app.config import Config
+from app.utils.logger import logger
 
 
 class OSSService:
@@ -29,9 +30,9 @@ class OSSService:
         try:
             if not self.client.bucket_exists(self.bucket):
                 self.client.make_bucket(self.bucket)
-                print(f"创建bucket: {self.bucket}")
+                logger.info(f"创建bucket: {self.bucket}")
         except S3Error as e:
-            print(f"检查或创建bucket失败: {e}")
+            logger.error(f"检查或创建bucket失败: {e}")
             raise
     
     def _generate_filename(self, output_format: str = "png") -> str:
@@ -78,7 +79,7 @@ class OSSService:
             url = f"http://{Config.MINIO_ENDPOINT}/{self.bucket}/{filename}"
             return url
         except S3Error as e:
-            print(f"上传图片失败: {e}")
+            logger.error(f"上传图片失败: {e}")
             raise
     
     def upload_images(self, images: List[Image.Image], output_format: str = "png") -> List[str]:

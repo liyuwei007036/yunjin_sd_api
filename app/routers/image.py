@@ -13,6 +13,7 @@ from app.services.callback_service import CallbackService
 from app.utils.task_manager import task_manager
 from app.auth import require_auth
 from app.config import Config
+from app.utils.logger import logger
 
 router = APIRouter(prefix="/api/v1", tags=["image"])
 
@@ -147,7 +148,7 @@ async def generate_image_task(
                 )
     except Exception as e:
         error_msg = str(e)
-        print(f"图片生成失败: task_id={task_id}, error={error_msg}")
+        logger.error(f"图片生成失败: task_id={task_id}, error={error_msg}", exc_info=True)
         task_manager.fail_task(task_id, error_msg)
         
         # 失败时也推送回调
