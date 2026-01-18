@@ -12,7 +12,6 @@ from app.services.oss_service import OSSService
 from app.services.callback_service import CallbackService
 from app.utils.task_manager import task_manager
 from app.auth import require_auth
-from app.config import Config
 from app.utils.logger import logger
 
 router = APIRouter(prefix="/api/v1", tags=["image"])
