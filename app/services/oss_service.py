@@ -122,7 +122,10 @@ class OSSService:
             图片URL列表
         """
         urls = []
-        for image in images:
+        logger.info(f"开始批量上传图片: count={len(images)}, format={output_format}")
+        for idx, image in enumerate(images, 1):
             url = self.upload_image(image, output_format)
             urls.append(url)
+            logger.debug(f"批量上传进度: {idx}/{len(images)}, url={url}")
+        logger.info(f"批量上传完成: count={len(urls)}, urls={urls}")
         return urls

@@ -93,6 +93,7 @@ async def generate_image_task(
         # 根据是否有init_image决定生成方式
         if init_image:
             # 图生图
+            logger.info(f"开始图生图任务: task_id={task_id}, prompt={prompt[:50]}..., num_images={num_images}")
             images = sd_svc.image_to_image(
                 prompt=prompt,
                 init_image=init_image,
@@ -104,8 +105,10 @@ async def generate_image_task(
                 guidance_scale=guidance_scale,
                 strength=strength,
             )
+            logger.info(f"图生图完成: task_id={task_id}, 生成图片数量={len(images) if isinstance(images, list) else 1}")
         else:
             # 文生图
+            logger.info(f"开始文生图任务: task_id={task_id}, prompt={prompt[:50]}..., num_images={num_images}, width={width}, height={height}")
             images = sd_svc.text_to_image(
                 prompt=prompt,
                 negative_prompt=negative_prompt,
@@ -117,12 +120,15 @@ async def generate_image_task(
                 num_inference_steps=num_inference_steps,
                 guidance_scale=guidance_scale,
             )
+            logger.info(f"文生图完成: task_id={task_id}, 生成图片数量={len(images) if isinstance(images, list) else 1}")
         
         # 处理单张或多张图片
         if num_images == 1:
             # 单张图片：返回单个URL
             image = images[0] if isinstance(images, list) else images
+            logger.info(f"开始上传图片到OSS: task_id={task_id}, format={output_format}")
             url = oss_svc.upload_image(image, output_format=output_format)
+            logger.info(f"图片生成成功: task_id={task_id}, url={url}")
             task_manager.complete_task(task_id, url)
             
             # 如果有回调URL，异步推送结果
@@ -135,7 +141,9 @@ async def generate_image_task(
                 )
         else:
             # 多张图片：返回URL列表
+            logger.info(f"开始上传图片到OSS: task_id={task_id}, num_images={num_images}, format={output_format}")
             urls = oss_svc.upload_images(images, output_format=output_format)
+            logger.info(f"图片生成成功: task_id={task_id}, num_images={len(urls)}, urls={urls}")
             task_manager.complete_task(task_id, urls)
             
             # 如果有回调URL，异步推送结果
