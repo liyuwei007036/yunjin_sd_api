@@ -65,6 +65,8 @@ class TaskStatusResponse(BaseModel):
     result_url: Optional[str] = Field(None, description="单张图片URL（当num_images=1且完成时）")
     result_urls: Optional[List[str]] = Field(None, description="图片URL列表（当num_images>1且完成时）")
     error_message: Optional[str] = Field(None, description="错误信息（失败时）")
+    prompt: Optional[str] = Field(None, description="使用的提示词")
+    negative_prompt: Optional[str] = Field(None, description="使用的负面提示词")
     created_at: str = Field(..., description="创建时间")
     updated_at: str = Field(..., description="更新时间")
 

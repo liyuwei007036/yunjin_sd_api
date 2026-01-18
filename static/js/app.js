@@ -13,6 +13,9 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 function initializeApp() {
+    // 加载保存的API Key
+    loadApiKey();
+    
     // 绑定事件
     setupEventListeners();
     
@@ -41,6 +44,16 @@ function setupEventListeners() {
     
     // 加载预设
     document.getElementById('loadPresetSelect').addEventListener('change', loadPreset);
+    
+    // 保存API Key
+    document.getElementById('saveApiKeyBtn').addEventListener('click', saveApiKey);
+    
+    // API Key输入框回车保存
+    document.getElementById('apiKeyInput').addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') {
+            saveApiKey();
+        }
+    });
 }
 
 function switchMode(mode) {
@@ -225,6 +238,20 @@ function readFileAsBase64(file) {
 }
 
 async function submitGenerateRequest(formData) {
+    // 检查API Key是否已设置
+    if (!api.apiKey || !api.apiKey.trim()) {
+        const apiKey = prompt('请先设置API Key（从服务端config.yaml中获取）:');
+        if (!apiKey || !apiKey.trim()) {
+            showError('API Key未设置，无法生成图片');
+            return;
+        }
+        api.setApiKey(apiKey.trim());
+        // 保存到localStorage
+        localStorage.setItem('api_key', apiKey.trim());
+        // 更新输入框
+        document.getElementById('apiKeyInput').value = apiKey.trim();
+    }
+    
     // 清除null和空字符串的字段
     Object.keys(formData).forEach(key => {
         if (formData[key] === null || formData[key] === '') {
@@ -321,6 +348,24 @@ function showResult(status) {
     const resultImagesDiv = document.getElementById('resultImages');
     resultImagesDiv.innerHTML = '';
 
+    // 显示prompt信息
+    if (status.prompt || status.negative_prompt) {
+        const promptDiv = document.createElement('div');
+        promptDiv.className = 'prompt-info';
+        let promptHTML = '<div class="prompt-info-header">使用的提示词：</div>';
+        
+        if (status.prompt) {
+            promptHTML += `<div class="prompt-section"><strong>Prompt:</strong><div class="prompt-text">${escapeHtml(status.prompt)}</div></div>`;
+        }
+        
+        if (status.negative_prompt) {
+            promptHTML += `<div class="prompt-section"><strong>Negative Prompt:</strong><div class="prompt-text">${escapeHtml(status.negative_prompt)}</div></div>`;
+        }
+        
+        promptDiv.innerHTML = promptHTML;
+        resultImagesDiv.appendChild(promptDiv);
+    }
+
     const urls = status.result_url ? [status.result_url] : (status.result_urls || []);
 
     urls.forEach((url, index) => {
@@ -336,6 +381,12 @@ function showResult(status) {
         `;
         resultImagesDiv.appendChild(item);
     });
+}
+
+function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
 }
 
 function copyUrl(url) {
@@ -476,6 +527,29 @@ function loadPreset() {
         // 重置选择框
         select.value = '';
     }, 100);
+}
+
+// API Key管理
+function loadApiKey() {
+    const savedApiKey = localStorage.getItem('api_key');
+    if (savedApiKey) {
+        api.setApiKey(savedApiKey);
+        document.getElementById('apiKeyInput').value = savedApiKey;
+    }
+}
+
+function saveApiKey() {
+    const apiKeyInput = document.getElementById('apiKeyInput');
+    const apiKey = apiKeyInput.value.trim();
+    
+    if (!apiKey) {
+        alert('请输入API Key');
+        return;
+    }
+    
+    api.setApiKey(apiKey);
+    localStorage.setItem('api_key', apiKey);
+    alert('API Key已保存');
 }
 
 // 历史记录管理

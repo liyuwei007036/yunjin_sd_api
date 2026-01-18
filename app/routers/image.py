@@ -220,8 +220,13 @@ async def generate_image(
     # 生成任务ID
     task_id = str(uuid.uuid4())
     
-    # 创建任务
-    task_manager.create_task(task_id, callback_url=request.callback_url)
+    # 创建任务，保存prompt信息
+    task_manager.create_task(
+        task_id, 
+        callback_url=request.callback_url,
+        prompt=prompt,
+        negative_prompt=negative_prompt
+    )
     
     # 添加后台任务
     background_tasks.add_task(
@@ -271,6 +276,8 @@ async def get_task_status(
         "result_url": task.result_url,
         "result_urls": task.result_urls,
         "error_message": task.error_message,
+        "prompt": task.prompt,
+        "negative_prompt": task.negative_prompt,
         "created_at": task.created_at.isoformat(),
         "updated_at": task.updated_at.isoformat(),
     }

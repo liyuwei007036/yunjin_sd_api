@@ -87,14 +87,14 @@ class OSSService:
     
     def upload_image(self, image: Image.Image, output_format: str = "png") -> str:
         """
-        上传单张图片到MinIO，返回公开URL
+        上传单张图片到MinIO，返回服务端代理URL
         
         Args:
             image: PIL Image对象
             output_format: 输出格式，png/jpg/jpeg
         
         Returns:
-            图片的公开URL
+            图片的服务端代理URL
         """
         filename = self._generate_filename(output_format)
         image_bytes = self._image_to_bytes(image, output_format)
@@ -102,9 +102,9 @@ class OSSService:
         
         try:
             self.client.put_object(self.bucket, filename, io.BytesIO(image_bytes), length=len(image_bytes), content_type=content_type)
-            # 生成公开URL（根据MinIO配置调整）
-            # 如果配置了公开访问，可以直接使用endpoint + bucket + filename
-            url = f"http://{Config.MINIO_ENDPOINT}/{self.bucket}/{filename}"
+            # 返回服务端代理URL，而不是MinIO直接URL
+            # 这样可以通过服务端代理访问图片，避免直接访问MinIO的权限问题
+            url = f"/api/v1/images/{self.bucket}/{filename}"
             return url
         except S3Error as e:
             logger.error(f"上传图片失败: {e}")

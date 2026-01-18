@@ -46,6 +46,23 @@ body {
     flex-wrap: wrap;
 }
 
+.api-key-group {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: rgba(255, 255, 255, 0.1);
+    padding: 6px 12px;
+    border-radius: 8px;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.api-key-label {
+    color: white;
+    font-size: 14px;
+    font-weight: 500;
+    white-space: nowrap;
+}
+
 .api-key-input {
     padding: 8px 12px;
     border: 1px solid rgba(255, 255, 255, 0.3);
@@ -54,6 +71,12 @@ body {
     color: white;
     font-size: 14px;
     width: 200px;
+}
+
+.api-key-input:focus {
+    outline: none;
+    border-color: rgba(255, 255, 255, 0.5);
+    background: rgba(255, 255, 255, 0.25);
 }
 
 .api-key-input::placeholder {
@@ -514,6 +537,52 @@ body {
     margin-bottom: 30px;
 }
 
+/* Prompt信息显示 */
+.prompt-info {
+    background: white;
+    border-radius: 8px;
+    padding: 16px;
+    margin-bottom: 20px;
+    border: 1px solid #e0e0e0;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.prompt-info-header {
+    font-size: 16px;
+    font-weight: 600;
+    color: #333;
+    margin-bottom: 12px;
+    border-bottom: 2px solid #667eea;
+    padding-bottom: 8px;
+}
+
+.prompt-section {
+    margin-bottom: 12px;
+}
+
+.prompt-section:last-child {
+    margin-bottom: 0;
+}
+
+.prompt-section strong {
+    display: block;
+    font-size: 14px;
+    color: #667eea;
+    margin-bottom: 6px;
+}
+
+.prompt-text {
+    background: #f8f9fa;
+    padding: 10px 12px;
+    border-radius: 6px;
+    border-left: 3px solid #667eea;
+    font-size: 13px;
+    line-height: 1.6;
+    color: #333;
+    word-break: break-word;
+    white-space: pre-wrap;
+}
+
 .result-image-item {
     background: white;
     border-radius: 8px;
@@ -659,6 +728,14 @@ body {
 
     .header-actions {
         width: 100%;
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .api-key-group {
+        width: 100%;
+        flex-direction: column;
+        align-items: stretch;
     }
 
     .api-key-input {

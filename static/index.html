@@ -12,6 +12,12 @@
         <header class="header">
             <h1>🎨 SD模型图片生成</h1>
             <div class="header-actions">
+                <div class="api-key-group">
+                    <label for="apiKeyInput" class="api-key-label">API Key:</label>
+                    <input type="password" id="apiKeyInput" class="api-key-input" placeholder="请输入API Key" 
+                        title="API Key用于认证，请从服务端配置中获取">
+                    <button id="saveApiKeyBtn" class="btn btn-small">保存</button>
+                </div>
                 <button id="savePresetBtn" class="btn btn-secondary">保存预设</button>
                 <select id="loadPresetSelect" class="preset-select">
                     <option value="">加载预设...</option>

@@ -44,9 +44,22 @@ class TaskManager:
                 result_url TEXT,
                 result_urls TEXT,
                 error_message TEXT,
-                callback_url TEXT
+                callback_url TEXT,
+                prompt TEXT,
+                negative_prompt TEXT
             )
         """)
+        
+        # 添加新列（如果不存在）- SQLite不支持IF NOT EXISTS，使用try-except
+        try:
+            cursor.execute("ALTER TABLE tasks ADD COLUMN prompt TEXT")
+        except sqlite3.OperationalError:
+            pass  # 列已存在
+        
+        try:
+            cursor.execute("ALTER TABLE tasks ADD COLUMN negative_prompt TEXT")
+        except sqlite3.OperationalError:
+            pass  # 列已存在
         
         # 创建索引
         cursor.execute("""
@@ -62,31 +75,39 @@ class TaskManager:
     def _row_to_task(self, row: sqlite3.Row) -> Task:
         """将数据库行转换为Task对象"""
         result_urls = None
-        if row['result_urls']:
-            try:
-                result_urls = json.loads(row['result_urls'])
-            except (json.JSONDecodeError, TypeError):
-                pass
+        try:
+            if row['result_urls']:
+                try:
+                    result_urls = json.loads(row['result_urls'])
+                except (json.JSONDecodeError, TypeError):
+                    pass
+        except (KeyError, TypeError):
+            pass
         
         task = Task(
             task_id=row['task_id'],
             status=TaskStatus(row['status']),
             created_at=datetime.fromisoformat(row['created_at']),
             updated_at=datetime.fromisoformat(row['updated_at']),
-            result_url=row['result_url'],
+            result_url=row['result_url'] if 'result_url' in row.keys() else None,
             result_urls=result_urls,
-            error_message=row['error_message'],
-            callback_url=row['callback_url']
+            error_message=row['error_message'] if 'error_message' in row.keys() else None,
+            callback_url=row['callback_url'] if 'callback_url' in row.keys() else None,
+            prompt=row['prompt'] if 'prompt' in row.keys() else None,
+            negative_prompt=row['negative_prompt'] if 'negative_prompt' in row.keys() else None
         )
         return task
     
-    def create_task(self, task_id: str, callback_url: Optional[str] = None) -> Task:
+    def create_task(self, task_id: str, callback_url: Optional[str] = None, 
+                    prompt: Optional[str] = None, negative_prompt: Optional[str] = None) -> Task:
         """
         创建新任务
         
         Args:
             task_id: 任务ID
             callback_url: 回调URL
+            prompt: 提示词
+            negative_prompt: 负面提示词
         
         Returns:
             创建的任务对象
@@ -97,9 +118,9 @@ class TaskManager:
         cursor = conn.cursor()
         
         cursor.execute("""
-            INSERT INTO tasks (task_id, status, created_at, updated_at, callback_url)
-            VALUES (?, ?, ?, ?, ?)
-        """, (task_id, TaskStatus.PENDING.value, now, now, callback_url))
+            INSERT INTO tasks (task_id, status, created_at, updated_at, callback_url, prompt, negative_prompt)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+        """, (task_id, TaskStatus.PENDING.value, now, now, callback_url, prompt, negative_prompt))
         
         conn.commit()
         conn.close()
@@ -110,7 +131,9 @@ class TaskManager:
             status=TaskStatus.PENDING,
             created_at=datetime.fromisoformat(now),
             updated_at=datetime.fromisoformat(now),
-            callback_url=callback_url
+            callback_url=callback_url,
+            prompt=prompt,
+            negative_prompt=negative_prompt
         )
         return task
     

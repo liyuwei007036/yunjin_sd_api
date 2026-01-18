@@ -26,6 +26,8 @@ class Task:
     result_urls: Optional[List[str]] = None
     error_message: Optional[str] = None
     callback_url: Optional[str] = None
+    prompt: Optional[str] = None
+    negative_prompt: Optional[str] = None
     
     def update_status(self, status: TaskStatus):
         """更新任务状态"""

@@ -13,13 +13,14 @@ if str(project_root) not in sys.path:
 from app.utils.logger import logger
 
 from contextlib import asynccontextmanager
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, StreamingResponse
 from app.routers import image
 from app.config import Config
 from app.models.schemas import HealthResponse
+from app.services.oss_service import OSSService
 
 
 @asynccontextmanager
@@ -126,6 +127,39 @@ async def root():
             "docs": "/docs",
             "health": "/health"
         }
+
+
+@app.get("/api/v1/images/{bucket}/{filename:path}", summary="图片代理接口")
+async def proxy_image(bucket: str, filename: str):
+    """
+    图片代理接口：从MinIO获取图片并返回给客户端
+    
+    这样可以将MinIO的内部URL转换为可通过服务端访问的URL
+    """
+    try:
+        oss_service = OSSService()
+        
+        # 从MinIO获取图片对象
+        response = oss_service.client.get_object(bucket, filename)
+        
+        # 确定内容类型
+        content_type = "image/png"  # 默认
+        if filename.lower().endswith('.jpg') or filename.lower().endswith('.jpeg'):
+            content_type = "image/jpeg"
+        elif filename.lower().endswith('.png'):
+            content_type = "image/png"
+        
+        # 返回图片流
+        return StreamingResponse(
+            response.stream(32*1024),  # 32KB chunks
+            media_type=content_type,
+            headers={
+                "Cache-Control": "public, max-age=31536000",  # 缓存1年
+            }
+        )
+    except Exception as e:
+        logger.error(f"获取图片失败: bucket={bucket}, filename={filename}, error={str(e)}")
+        raise HTTPException(status_code=404, detail=f"图片不存在: {filename}")
 
 
 if __name__ == "__main__":
