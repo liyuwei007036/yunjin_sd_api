@@ -1,0 +1,55 @@
+# SD模型API服务配置文件
+# 复制此文件为 config.yaml 并修改相应配置
+
+# SD模型配置
+sd_model:
+  path: "./models/stable-diffusion-v1-5"
+
+# LoRA模型配置（可选）
+# 方式1: 直接配置模型列表（推荐）
+lora:
+  models:
+    - path: "./models/lora/model1.safetensors"
+      weight: 1.0
+    - path: "./models/lora/model2.safetensors"
+      weight: 0.8
+
+# 方式2: 使用目录和文件列表
+# lora:
+#   models_dir: "./models/lora"
+#   models_list: "model1.safetensors,model2.safetensors"
+
+# 默认采样方法（可选）
+# default_scheduler: "DPMSolverMultistepScheduler"
+
+# MinIO OSS配置
+minio:
+  endpoint: "localhost:9000"
+  access_key: "minioadmin"
+  secret_key: "minioadmin"
+  bucket: "sd-images"
+
+# API认证配置
+api:
+  keys:
+    - "your_api_key_1"
+    - "your_api_key_2"
+  # 或者使用逗号分隔的字符串:
+  # keys: "your_api_key_1,your_api_key_2"
+  key_header: "X-API-Key"
+
+# 运行设备
+device: "cuda"  # 可选: "cuda", "cpu", "mps" (Mac)
+
+# 回调配置
+callback:
+  retry_times: 3
+  retry_interval: 5  # 秒
+
+# 健康检查接口配置
+health_check:
+  no_auth: true  # 是否免认证，默认true
+
+# 任务数据库配置
+task_db:
+  path: "tasks.db"

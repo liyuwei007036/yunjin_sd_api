@@ -34,7 +34,7 @@ async def health_check():
     健康检查接口
     
     返回服务状态和模型加载状态
-    默认免认证（可通过HEALTH_CHECK_NO_AUTH环境变量配置）
+    默认免认证（可通过config.yaml中的health_check.no_auth配置）
     """
     # 检查模型是否已加载
     model_loaded = False
@@ -65,7 +65,7 @@ async def startup_event():
         print("配置验证失败:")
         for error in errors:
             print(f"  - {error}")
-        print("请检查环境变量配置")
+        print("请检查config.yaml配置文件")
     else:
         print("配置验证通过")
     
