@@ -248,6 +248,9 @@ class SDService:
         if generator:
             generate_kwargs["generator"] = generator
         
+        # 合并额外参数
+        generate_kwargs.update(kwargs)
+        
         # 生成图片
         result = self.img2img_pipeline(**generate_kwargs)
         

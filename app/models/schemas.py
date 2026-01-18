@@ -2,7 +2,7 @@
 Pydantic数据模型：请求/响应Schema
 """
 from typing import Optional, List, Literal
-from pydantic import BaseModel, Field, validator
+from pydantic import BaseModel, Field, field_validator
 
 
 class GenerateRequest(BaseModel):
@@ -21,7 +21,8 @@ class GenerateRequest(BaseModel):
     output_format: Optional[Literal["png", "jpg", "jpeg"]] = Field("png", description="输出图片格式")
     callback_url: Optional[str] = Field(None, description="回调URL，生成完成后将结果推送到该URL")
     
-    @validator("num_images")
+    @field_validator("num_images")
+    @classmethod
     def validate_num_images(cls, v):
         if v and (v < 1 or v > 10):
             raise ValueError("num_images必须在1-10之间")
