@@ -13,6 +13,7 @@ if str(project_root) not in sys.path:
 from app.utils.logger import logger
 
 from contextlib import asynccontextmanager
+import gc
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
@@ -57,8 +58,36 @@ async def lifespan(app: FastAPI):
     
     yield
     
-    # 关闭时执行（如果需要清理资源，可以在这里添加）
+    # 关闭时执行资源清理
     logger.info("服务正在关闭...")
+    try:
+        # 清理路由中的服务实例
+        from app.routers.image import cleanup_services
+        cleanup_services()
+        
+        # 清理LLM服务（如果有）
+        from app.services.llm_service import _llm_service
+        if _llm_service is not None:
+            # LLM服务通常不需要特殊清理，主要是HTTP客户端会自动关闭
+            gc.collect()
+            logger.info("LLM服务已清理")
+        
+        # 最后强制垃圾回收
+        gc.collect()
+        
+        # 清理PyTorch CUDA缓存（如果有CUDA）
+        try:
+            import torch
+            if torch.cuda.is_available():
+                torch.cuda.empty_cache()
+                torch.cuda.ipc_collect()
+                logger.info("PyTorch CUDA缓存已清理")
+        except Exception:
+            pass
+        
+        logger.info("资源清理完成")
+    except Exception as e:
+        logger.error(f"关闭服务时出错: {e}", exc_info=True)
 
 
 # 创建FastAPI应用
@@ -137,7 +166,9 @@ async def proxy_image(bucket: str, filename: str):
     这样可以将MinIO的内部URL转换为可通过服务端访问的URL
     """
     try:
-        oss_service = OSSService()
+        # 使用单例OSS服务实例
+        from app.routers.image import get_oss_service
+        oss_service = get_oss_service()
         
         # 从MinIO获取图片对象
         response = oss_service.client.get_object(bucket, filename)

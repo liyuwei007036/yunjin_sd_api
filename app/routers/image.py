@@ -14,6 +14,7 @@ from app.services.llm_service import get_llm_service
 from app.utils.task_manager import task_manager
 from app.auth import require_auth
 from app.utils.logger import logger
+import gc
 
 router = APIRouter(prefix="/api/v1", tags=["image"])
 
@@ -45,6 +46,43 @@ def get_callback_service() -> CallbackService:
     if callback_service is None:
         callback_service = CallbackService()
     return callback_service
+
+
+def cleanup_services():
+    """清理所有服务实例的资源"""
+    global sd_service, oss_service, callback_service
+    logger.info("开始清理服务实例...")
+    
+    if sd_service is not None:
+        try:
+            sd_service.cleanup()
+            del sd_service
+            sd_service = None
+            logger.info("SD服务已清理")
+        except Exception as e:
+            logger.error(f"清理SD服务时出错: {e}", exc_info=True)
+    
+    if oss_service is not None:
+        try:
+            # OSS服务通常不需要特殊清理，但可以删除引用
+            del oss_service
+            oss_service = None
+            logger.info("OSS服务已清理")
+        except Exception as e:
+            logger.error(f"清理OSS服务时出错: {e}", exc_info=True)
+    
+    if callback_service is not None:
+        try:
+            del callback_service
+            callback_service = None
+            logger.info("回调服务已清理")
+        except Exception as e:
+            logger.error(f"清理回调服务时出错: {e}", exc_info=True)
+    
+    # 强制垃圾回收
+    gc.collect()
+    
+    logger.info("所有服务实例已清理")
 
 
 async def generate_image_task(

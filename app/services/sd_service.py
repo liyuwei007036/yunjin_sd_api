@@ -185,6 +185,65 @@ class SDService:
         
         logger.info("SD模型加载完成")
     
+    def cleanup(self):
+        """
+        清理资源，释放模型和内存
+        应该在应用关闭时调用
+        """
+        logger.info("开始清理SD服务资源...")
+        
+        try:
+            # 清理Compel实例
+            if self.compel is not None:
+                del self.compel
+                self.compel = None
+            if self.compel_negative is not None:
+                del self.compel_negative
+                self.compel_negative = None
+            
+            # 清理pipeline
+            if self.text2img_pipeline is not None:
+                # 将模型移回CPU（如果是GPU）
+                if self.device == "cuda":
+                    try:
+                        self.text2img_pipeline = self.text2img_pipeline.to("cpu")
+                    except Exception as e:
+                        logger.warning(f"将text2img_pipeline移到CPU时出错: {e}")
+                
+                # 删除pipeline
+                del self.text2img_pipeline
+                self.text2img_pipeline = None
+            
+            if self.img2img_pipeline is not None:
+                # 将模型移回CPU（如果是GPU）
+                if self.device == "cuda":
+                    try:
+                        self.img2img_pipeline = self.img2img_pipeline.to("cpu")
+                    except Exception as e:
+                        logger.warning(f"将img2img_pipeline移到CPU时出错: {e}")
+                
+                # 删除pipeline
+                del self.img2img_pipeline
+                self.img2img_pipeline = None
+            
+            # 清理PyTorch缓存
+            if self.device == "cuda" and torch.cuda.is_available():
+                try:
+                    torch.cuda.empty_cache()
+                    torch.cuda.ipc_collect()
+                    logger.info("GPU缓存已清理")
+                except Exception as e:
+                    logger.warning(f"清理GPU缓存时出错: {e}")
+            
+            # 清理CPU缓存（强制垃圾回收）
+            import gc
+            gc.collect()
+            logger.info("CPU缓存已清理")
+            
+            logger.info("SD服务资源清理完成")
+        except Exception as e:
+            logger.error(f"清理SD服务资源时出错: {e}", exc_info=True)
+    
     def _is_loha_format(self, state_dict: Dict[str, torch.Tensor]) -> bool:
         """检查是否是LoHA格式"""
         for key in state_dict.keys():

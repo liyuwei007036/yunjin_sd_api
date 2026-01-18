@@ -64,6 +64,10 @@ class Config:
     LLM_VISION_API_BASE: Optional[str] = None  # VL模型的API地址（如果与普通模型不同）
     LLM_VISION_API_KEY: Optional[str] = None  # VL模型的API密钥（如果与普通模型不同）
     
+    # LLM提示词配置
+    PROMPTS_FILE: str = "prompts.yaml"  # 提示词配置文件路径
+    LLM_PROMPTS: Dict[str, Any] = {}  # 存储加载的提示词
+    
     @classmethod
     def load_config(cls, config_path: Optional[str] = None) -> None:
         """从YAML文件加载配置"""
@@ -140,6 +144,9 @@ class Config:
         
         # 加载LoRA模型
         cls.load_lora_models()
+        
+        # 加载LLM提示词配置
+        cls.load_prompts()
     
     @classmethod
     def load_lora_models(cls) -> Optional[List[Dict[str, Any]]]:
@@ -165,6 +172,53 @@ class Config:
         # 未配置LoRA模型
         cls.LORA_MODELS = []
         return None
+    
+    @classmethod
+    def load_prompts(cls, prompts_path: Optional[str] = None) -> None:
+        """从YAML文件加载LLM提示词配置"""
+        if prompts_path:
+            cls.PROMPTS_FILE = prompts_path
+        
+        prompts_file = Path(cls.PROMPTS_FILE)
+        if not prompts_file.exists():
+            logger.warning(
+                f"提示词配置文件不存在: {cls.PROMPTS_FILE}\n"
+                f"将使用代码中的默认提示词"
+            )
+            cls.LLM_PROMPTS = {}
+            return
+        
+        try:
+            with open(prompts_file, 'r', encoding='utf-8') as f:
+                cls.LLM_PROMPTS = yaml.safe_load(f) or {}
+            logger.info(f"提示词配置加载成功: {cls.PROMPTS_FILE}")
+        except Exception as e:
+            logger.error(f"加载提示词配置失败: {e}")
+            cls.LLM_PROMPTS = {}
+    
+    @classmethod
+    def get_prompt(cls, category: str, prompt_type: str, default: Optional[str] = None) -> Optional[str]:
+        """
+        获取提示词
+        
+        Args:
+            category: 提示词类别（img2img_with_vision, img2img, text2img）
+            prompt_type: 提示词类型（system_prompt, user_message_template）
+            default: 如果未找到时的默认值
+            
+        Returns:
+            提示词字符串，如果未找到则返回default
+        """
+        if not cls.LLM_PROMPTS:
+            return default
+        
+        category_config = cls.LLM_PROMPTS.get(category, {})
+        prompt = category_config.get(prompt_type)
+        
+        if prompt is None:
+            return default
+        
+        return prompt
     
     @classmethod
     def validate(cls) -> List[str]:
