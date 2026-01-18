@@ -99,26 +99,29 @@
                                 <div class="slider-group">
                                     <label for="text2imgNumImages" class="form-label-small">
                                         生成数量: <span id="text2imgNumImagesValue">1</span>
-                                        <span class="tooltip" title="一次生成多少张图片（1-10）">ℹ️</span>
+                                        <span class="tooltip" title="一次生成多少张图片（1-10）。数量越多生成时间越长，但可以获得更多不同的结果供选择。">ℹ️</span>
                                     </label>
                                     <input type="range" id="text2imgNumImages" class="slider" min="1" max="10" value="1" 
                                         oninput="document.getElementById('text2imgNumImagesValue').textContent = this.value">
+                                    <div class="param-description-small">一次生成多张图片，可以获得更多不同的结果供选择。数量越多，生成时间越长。</div>
                                 </div>
                                 <div class="slider-group">
                                     <label for="text2imgSteps" class="form-label-small">
                                         推理步数: <span id="text2imgStepsValue">30</span>
-                                        <span class="tooltip" title="生成时的迭代步数，步数越多质量越好但速度越慢（20-50）">ℹ️</span>
+                                        <span class="tooltip" title="生成时的迭代步数（20-50）。步数越多质量越好但速度越慢。推荐值：快速生成20-30步，平衡30-40步，高质量40-50步。">ℹ️</span>
                                     </label>
                                     <input type="range" id="text2imgSteps" class="slider" min="20" max="50" value="30" step="5"
                                         oninput="document.getElementById('text2imgStepsValue').textContent = this.value">
+                                    <div class="param-description-small">控制生成过程的迭代次数。步数越多，图片质量越好但生成时间越长。推荐：快速20-30步，平衡30-40步，高质量40-50步。</div>
                                 </div>
                                 <div class="slider-group">
                                     <label for="text2imgGuidance" class="form-label-small">
                                         引导强度: <span id="text2imgGuidanceValue">7.5</span>
-                                        <span class="tooltip" title="控制模型对提示词的遵循程度（5.0-15.0）">ℹ️</span>
+                                        <span class="tooltip" title="控制模型对提示词的遵循程度（5.0-15.0），也称为CFG Scale。值越高越符合提示词但可能过度饱和，值越低更随机但可能不够符合。推荐值：一般场景7.5-9.0，高精度10.0-12.0，创意多样性5.0-7.0。">ℹ️</span>
                                     </label>
                                     <input type="range" id="text2imgGuidance" class="slider" min="5" max="15" value="7.5" step="0.5"
                                         oninput="document.getElementById('text2imgGuidanceValue').textContent = this.value">
+                                    <div class="param-description-small">控制模型对提示词的遵循程度（CFG Scale）。值越高越符合提示词但可能过度饱和，值越低更随机。推荐：一般7.5-9.0，高精度10.0-12.0，创意5.0-7.0。</div>
                                 </div>
                             </div>
 
@@ -126,20 +129,34 @@
                             <div class="form-group">
                                 <label for="text2imgScheduler" class="form-label">
                                     采样方法
-                                    <span class="tooltip" title="选择采样算法">ℹ️</span>
+                                    <span class="tooltip" title="选择采样算法，不同采样器有不同的特点：&#10;• DPMSolverMultistepScheduler: 推荐，质量好速度快，适合大多数场景&#10;• DDIMScheduler: 稳定但较慢，适合需要精确控制的场景&#10;• EulerDiscreteScheduler: 快速，质量不错，适合快速生成&#10;• EulerAncestralDiscreteScheduler: 快速且随机性强，每次结果差异较大&#10;• PNDMScheduler: 经典方法，稳定但较慢&#10;• LMSDiscreteScheduler: 线性多步采样，平衡质量和速度&#10;• HeunDiscreteScheduler: 高质量但较慢&#10;• KDPM2DiscreteScheduler: 快速，质量一般&#10;• KDPM2AncestralDiscreteScheduler: 快速且随机性强">ℹ️</span>
                                 </label>
                                 <select id="text2imgScheduler" class="select">
                                     <option value="">使用默认</option>
-                                    <option value="DPMSolverMultistepScheduler">DPMSolverMultistepScheduler</option>
-                                    <option value="DDIMScheduler">DDIMScheduler</option>
-                                    <option value="EulerDiscreteScheduler">EulerDiscreteScheduler</option>
-                                    <option value="EulerAncestralDiscreteScheduler">EulerAncestralDiscreteScheduler</option>
-                                    <option value="PNDMScheduler">PNDMScheduler</option>
-                                    <option value="LMSDiscreteScheduler">LMSDiscreteScheduler</option>
-                                    <option value="HeunDiscreteScheduler">HeunDiscreteScheduler</option>
-                                    <option value="KDPM2DiscreteScheduler">KDPM2DiscreteScheduler</option>
-                                    <option value="KDPM2AncestralDiscreteScheduler">KDPM2AncestralDiscreteScheduler</option>
+                                    <option value="DPMSolverMultistepScheduler" title="推荐：质量好速度快，适合大多数场景">DPMSolverMultistepScheduler (推荐)</option>
+                                    <option value="DDIMScheduler" title="稳定但较慢，适合需要精确控制的场景">DDIMScheduler (稳定)</option>
+                                    <option value="EulerDiscreteScheduler" title="快速，质量不错，适合快速生成">EulerDiscreteScheduler (快速)</option>
+                                    <option value="EulerAncestralDiscreteScheduler" title="快速且随机性强，每次结果差异较大">EulerAncestralDiscreteScheduler (快速随机)</option>
+                                    <option value="PNDMScheduler" title="经典方法，稳定但较慢">PNDMScheduler (经典)</option>
+                                    <option value="LMSDiscreteScheduler" title="线性多步采样，平衡质量和速度">LMSDiscreteScheduler (平衡)</option>
+                                    <option value="HeunDiscreteScheduler" title="高质量但较慢">HeunDiscreteScheduler (高质量)</option>
+                                    <option value="KDPM2DiscreteScheduler" title="快速，质量一般">KDPM2DiscreteScheduler (快速)</option>
+                                    <option value="KDPM2AncestralDiscreteScheduler" title="快速且随机性强">KDPM2AncestralDiscreteScheduler (快速随机)</option>
                                 </select>
+                                <div class="param-description">
+                                    <strong>采样器说明：</strong>
+                                    <ul>
+                                        <li><strong>DPMSolverMultistepScheduler</strong>：推荐使用，质量好速度快，适合大多数场景</li>
+                                        <li><strong>DDIMScheduler</strong>：稳定但较慢，适合需要精确控制的场景</li>
+                                        <li><strong>EulerDiscreteScheduler</strong>：快速，质量不错，适合快速生成</li>
+                                        <li><strong>EulerAncestralDiscreteScheduler</strong>：快速且随机性强，每次结果差异较大</li>
+                                        <li><strong>PNDMScheduler</strong>：经典方法，稳定但较慢</li>
+                                        <li><strong>LMSDiscreteScheduler</strong>：线性多步采样，平衡质量和速度</li>
+                                        <li><strong>HeunDiscreteScheduler</strong>：高质量但较慢</li>
+                                        <li><strong>KDPM2DiscreteScheduler</strong>：快速，质量一般</li>
+                                        <li><strong>KDPM2AncestralDiscreteScheduler</strong>：快速且随机性强</li>
+                                    </ul>
+                                </div>
                             </div>
 
                             <div class="form-group">
@@ -236,7 +253,7 @@
                                 <div class="slider-group">
                                     <label for="img2imgStrength" class="form-label-small">
                                         图生图强度: <span id="img2imgStrengthValue">0.75</span>
-                                        <span class="tooltip" title="控制对原图的修改程度（0.0-1.0）">ℹ️</span>
+                                        <span class="tooltip" title="控制对原图的修改程度（0.0-1.0）。0.0=几乎不修改，0.1-0.3=轻微调整适合修复，0.4-0.6=中等变化适合风格转换，0.7-0.9=较大变化保留构图，1.0=接近重新生成。">ℹ️</span>
                                     </label>
                                     <input type="range" id="img2imgStrength" class="slider" min="0" max="1" value="0.75" step="0.1"
                                         oninput="document.getElementById('img2imgStrengthValue').textContent = this.value">
@@ -245,6 +262,7 @@
                                         <span>0.5=中等变化</span>
                                         <span>1.0=接近重新生成</span>
                                     </div>
+                                    <div class="param-description-small">控制对原图的修改程度。0.0-0.3适合微调/修复，0.4-0.6适合风格转换，0.7-0.9适合大幅改造，1.0接近重新生成。默认0.75。</div>
                                 </div>
                             </div>
 
@@ -254,26 +272,29 @@
                                 <div class="slider-group">
                                     <label for="img2imgNumImages" class="form-label-small">
                                         生成数量: <span id="img2imgNumImagesValue">1</span>
-                                        <span class="tooltip" title="一次生成多少张图片（1-10）">ℹ️</span>
+                                        <span class="tooltip" title="一次生成多少张图片（1-10）。数量越多生成时间越长，但可以获得更多不同的结果供选择。">ℹ️</span>
                                     </label>
                                     <input type="range" id="img2imgNumImages" class="slider" min="1" max="10" value="1"
                                         oninput="document.getElementById('img2imgNumImagesValue').textContent = this.value">
+                                    <div class="param-description-small">一次生成多张图片，可以获得更多不同的结果供选择。数量越多，生成时间越长。</div>
                                 </div>
                                 <div class="slider-group">
                                     <label for="img2imgSteps" class="form-label-small">
                                         推理步数: <span id="img2imgStepsValue">30</span>
-                                        <span class="tooltip" title="生成时的迭代步数（20-50）">ℹ️</span>
+                                        <span class="tooltip" title="生成时的迭代步数（20-50）。步数越多质量越好但速度越慢。推荐值：快速生成20-30步，平衡30-40步，高质量40-50步。">ℹ️</span>
                                     </label>
                                     <input type="range" id="img2imgSteps" class="slider" min="20" max="50" value="30" step="5"
                                         oninput="document.getElementById('img2imgStepsValue').textContent = this.value">
+                                    <div class="param-description-small">控制生成过程的迭代次数。步数越多，图片质量越好但生成时间越长。推荐：快速20-30步，平衡30-40步，高质量40-50步。</div>
                                 </div>
                                 <div class="slider-group">
                                     <label for="img2imgGuidance" class="form-label-small">
                                         引导强度: <span id="img2imgGuidanceValue">7.5</span>
-                                        <span class="tooltip" title="控制模型对提示词的遵循程度（5.0-15.0）">ℹ️</span>
+                                        <span class="tooltip" title="控制模型对提示词的遵循程度（5.0-15.0），也称为CFG Scale。值越高越符合提示词但可能过度饱和，值越低更随机但可能不够符合。推荐值：一般场景7.5-9.0，高精度10.0-12.0，创意多样性5.0-7.0。">ℹ️</span>
                                     </label>
                                     <input type="range" id="img2imgGuidance" class="slider" min="5" max="15" value="7.5" step="0.5"
                                         oninput="document.getElementById('img2imgGuidanceValue').textContent = this.value">
+                                    <div class="param-description-small">控制模型对提示词的遵循程度（CFG Scale）。值越高越符合提示词但可能过度饱和，值越低更随机。推荐：一般7.5-9.0，高精度10.0-12.0，创意5.0-7.0。</div>
                                 </div>
                             </div>
 
@@ -281,20 +302,34 @@
                             <div class="form-group">
                                 <label for="img2imgScheduler" class="form-label">
                                     采样方法
-                                    <span class="tooltip" title="选择采样算法">ℹ️</span>
+                                    <span class="tooltip" title="选择采样算法，不同采样器有不同的特点：&#10;• DPMSolverMultistepScheduler: 推荐，质量好速度快，适合大多数场景&#10;• DDIMScheduler: 稳定但较慢，适合需要精确控制的场景&#10;• EulerDiscreteScheduler: 快速，质量不错，适合快速生成&#10;• EulerAncestralDiscreteScheduler: 快速且随机性强，每次结果差异较大&#10;• PNDMScheduler: 经典方法，稳定但较慢&#10;• LMSDiscreteScheduler: 线性多步采样，平衡质量和速度&#10;• HeunDiscreteScheduler: 高质量但较慢&#10;• KDPM2DiscreteScheduler: 快速，质量一般&#10;• KDPM2AncestralDiscreteScheduler: 快速且随机性强">ℹ️</span>
                                 </label>
                                 <select id="img2imgScheduler" class="select">
                                     <option value="">使用默认</option>
-                                    <option value="DPMSolverMultistepScheduler">DPMSolverMultistepScheduler</option>
-                                    <option value="DDIMScheduler">DDIMScheduler</option>
-                                    <option value="EulerDiscreteScheduler">EulerDiscreteScheduler</option>
-                                    <option value="EulerAncestralDiscreteScheduler">EulerAncestralDiscreteScheduler</option>
-                                    <option value="PNDMScheduler">PNDMScheduler</option>
-                                    <option value="LMSDiscreteScheduler">LMSDiscreteScheduler</option>
-                                    <option value="HeunDiscreteScheduler">HeunDiscreteScheduler</option>
-                                    <option value="KDPM2DiscreteScheduler">KDPM2DiscreteScheduler</option>
-                                    <option value="KDPM2AncestralDiscreteScheduler">KDPM2AncestralDiscreteScheduler</option>
+                                    <option value="DPMSolverMultistepScheduler" title="推荐：质量好速度快，适合大多数场景">DPMSolverMultistepScheduler (推荐)</option>
+                                    <option value="DDIMScheduler" title="稳定但较慢，适合需要精确控制的场景">DDIMScheduler (稳定)</option>
+                                    <option value="EulerDiscreteScheduler" title="快速，质量不错，适合快速生成">EulerDiscreteScheduler (快速)</option>
+                                    <option value="EulerAncestralDiscreteScheduler" title="快速且随机性强，每次结果差异较大">EulerAncestralDiscreteScheduler (快速随机)</option>
+                                    <option value="PNDMScheduler" title="经典方法，稳定但较慢">PNDMScheduler (经典)</option>
+                                    <option value="LMSDiscreteScheduler" title="线性多步采样，平衡质量和速度">LMSDiscreteScheduler (平衡)</option>
+                                    <option value="HeunDiscreteScheduler" title="高质量但较慢">HeunDiscreteScheduler (高质量)</option>
+                                    <option value="KDPM2DiscreteScheduler" title="快速，质量一般">KDPM2DiscreteScheduler (快速)</option>
+                                    <option value="KDPM2AncestralDiscreteScheduler" title="快速且随机性强">KDPM2AncestralDiscreteScheduler (快速随机)</option>
                                 </select>
+                                <div class="param-description">
+                                    <strong>采样器说明：</strong>
+                                    <ul>
+                                        <li><strong>DPMSolverMultistepScheduler</strong>：推荐使用，质量好速度快，适合大多数场景</li>
+                                        <li><strong>DDIMScheduler</strong>：稳定但较慢，适合需要精确控制的场景</li>
+                                        <li><strong>EulerDiscreteScheduler</strong>：快速，质量不错，适合快速生成</li>
+                                        <li><strong>EulerAncestralDiscreteScheduler</strong>：快速且随机性强，每次结果差异较大</li>
+                                        <li><strong>PNDMScheduler</strong>：经典方法，稳定但较慢</li>
+                                        <li><strong>LMSDiscreteScheduler</strong>：线性多步采样，平衡质量和速度</li>
+                                        <li><strong>HeunDiscreteScheduler</strong>：高质量但较慢</li>
+                                        <li><strong>KDPM2DiscreteScheduler</strong>：快速，质量一般</li>
+                                        <li><strong>KDPM2AncestralDiscreteScheduler</strong>：快速且随机性强</li>
+                                    </ul>
+                                </div>
                             </div>
 
                             <div class="form-group">

@@ -57,6 +57,7 @@ class Config:
     LLM_MODEL: str = "gpt-3.5-turbo"
     LLM_TEMPERATURE: float = 0.7
     LLM_TIMEOUT: int = 30
+    LLM_PROMPT_PREFIX: Optional[str] = None  # 提示词前缀，会在生成的prompt前自动添加
     
     @classmethod
     def load_config(cls, config_path: Optional[str] = None) -> None:
@@ -124,6 +125,7 @@ class Config:
         cls.LLM_MODEL = llm_config.get("model", cls.LLM_MODEL)
         cls.LLM_TEMPERATURE = llm_config.get("temperature", cls.LLM_TEMPERATURE)
         cls.LLM_TIMEOUT = llm_config.get("timeout", cls.LLM_TIMEOUT)
+        cls.LLM_PROMPT_PREFIX = llm_config.get("prompt_prefix")
         
         # 加载LoRA模型
         cls.load_lora_models()

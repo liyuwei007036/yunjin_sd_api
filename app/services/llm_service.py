@@ -54,8 +54,9 @@ class LLMService:
    - 摄影风格：film photography, cinematic, portrait photography等
    
 4. **光照和颜色** (Lighting & Color)
-   - 光照：golden hour, rim lighting, soft lighting, dramatic lighting, cinematic lighting
-   - 颜色：vibrant colors, muted tones, warm colors, cool palette等
+   - 对于写实风格/摄影风格：golden hour, rim lighting, soft lighting, dramatic lighting, cinematic lighting
+   - 对于中国传统画/水墨画/工笔画等艺术风格：natural ink wash, traditional Chinese painting lighting, soft brush strokes, ink and wash effect（避免使用摄影类光照术语）
+   - 颜色：vibrant colors, muted tones, warm colors, cool palette, ink colors, traditional Chinese colors等
    
 5. **构图和视角** (Composition & Perspective)
    - 视角：close-up, wide shot, bird's eye view, low angle, eye level
@@ -93,6 +94,10 @@ class LLMService:
 
 ### 5. 生成要求
 - 正向提示词必须包含：主体、环境、风格、质量标签
+- **根据风格类型调整光照描述**：
+  - 如果是中国传统画、水墨画、工笔画、国画等风格，使用传统绘画的光照描述，避免使用摄影类光照术语
+  - 如果是写实、摄影风格，使用摄影类光照术语
+  - 如果是其他艺术风格，根据风格特点选择合适的光照描述
 - 根据用户描述自动补充合适的风格、光照、质量标签
 - 如果用户描述是人物，自动添加合适的质量标签如"portrait, detailed face, beautiful"
 - 如果用户描述是风景，自动添加"landscape, scenic, detailed environment"
@@ -133,6 +138,12 @@ class LLMService:
             
             # 解析响应
             prompt, negative_prompt = self._parse_response(response)
+            
+            # 添加配置的前缀
+            if Config.LLM_PROMPT_PREFIX:
+                prefix = Config.LLM_PROMPT_PREFIX.strip()
+                if prefix:
+                    prompt = f"{prefix}, {prompt}"
             
             logger.info(f"LLM转换成功: 自然语言='{natural_language[:50]}...' -> prompt长度={len(prompt)}")
             return prompt, negative_prompt

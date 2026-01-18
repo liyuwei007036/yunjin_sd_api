@@ -63,3 +63,4 @@ llm:
   model: "gpt-3.5-turbo"  # 使用的模型名称
   temperature: 0.7  # 生成温度，0.0-1.0
   timeout: 30  # 请求超时时间（秒）
+  prompt_prefix: ""  # 提示词前缀，会在所有生成的prompt前自动添加，例如："masterpiece, best quality"
